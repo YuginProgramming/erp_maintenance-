@@ -1,0 +1,208 @@
+Адреса 
+https://soliton.net.ua/water/api
+
+Новини
+ Запит /news
+Відповідь JSON 
+{
+"status":"success",
+"news":[
+ 	{"title":"nnnn","desc":"nnnn","date":"2022-08-11"},
+      {"title":"mmm","desc":"mmm","date":"2022-08-10"}
+]
+}
+Апарати
+ Запит /devices
+ Відповідь JSON
+{
+"status":"success",
+"devices":[
+{"id":"267","name":"0_Cards","lat":null,"lon":null},
+{"id":"266","name":"0_Soliton_net","lat":null,"lon":null},
+{"id":"288","name":"Mutant","lat":null,"lon":null},
+{"id":"153","name":"Антонича 6 Бл 1,2 Зел Stop","lat":"23.67889","lon":"65.57788"},
+{"id":"228","name":"Бабія 14 Бл 1,2 Чер Pause","lat":"23.67889","lon":"65.57788"},
+{"id":"240","name":"Багряного 39 Бл 1,5 Чер Pause","lat":"23.67889","lon":"65.57788"},
+{"id":"164","name":"Бандери 69 Бл 1,5 Зел","lat":"23.67889","lon":"65.57788"},
+………………………..
+………………………..
+]
+}
+Ціни
+3.1. Запит /prices/index.php,  POST request in JSON format
+json tags: device_id
+відповідь json
+{
+"status":"success",
+"device_id":"1",
+"prices":
+      {
+        "P_0p5":”50”,
+        "P_01":”100”,
+        "P_1p5":”150”,
+        "P_02":”200”
+        "P_05":”500”,
+        "P_06":”600”,
+        "P_10":”1000”
+        "P_15":”1500”,
+        "P_19":”1900”,
+        "P_1_std":100”,
+        "P_probki":”500”,
+        "P_ruchki":”300”,
+        "P_cards":”1000”
+      }
+}
+або
+{"status":"error",“descr”:”no device”}
+Картки 
+Запит /card/query/index.php,  POST request in JSON format
+json tags: user_id, card_id
+відповідь json
+{
+"status":"success",
+"card":
+      {
+        "ID":"1232",
+        "Number":"33053034",
+        "Card":"66007F1D04",
+        "Type":"7",
+        "CardGroup":"РЈРЅС–РІРµСЂСЃР°Р»СЊРЅР°",
+        "WaterQty":0,
+        "AllQty":1237,
+        "MoneyPerMonth":0,
+        "LitresPerDay":0,
+        "Discount":30,
+        "status":"ok"
+}
+}
+Приєднання картки /card/link/index.php,  POST request in JSON format
+json tags: user_id, card_id
+відповідь json
+{"status":"success",“descr”:”card linked”}
+{"status":"error",“descr”:”card linking error”}
+{"status":"error",“descr”:”card belongs to another user”}
+{"status":"error",“descr”:”card already linked to user”}
+ Відсилання картки на апарат /card/send/index.php,  POST request in JSON format
+json tags: device_id, card_id
+відповідь json
+{"status":"success"}
+{"status":"error",“descr”:”no card id”}
+{"status":"error",“descr”:”no device id”}
+{"status":"error",“descr”:”database error”}
+Логін /user/index.php, GET request “phone=xxxxxxxxxxxx” 12 digits
+відповідь json
+{"status":"success",
+"user":
+{"uid":"7",
+"name":"Ігор Петренко",
+"date_birth":"03.08.1990",
+"phone":"380685551125",
+"email":"abc@gmail.com",
+"card":[{"ID":"1230","Number":"33053032","Card":"66007EFF3E","Type":"7","CardGroup":"Універсальна","WaterQty":0,"AllQty":1110,"MoneyPerMonth":0,"LitresPerDay":0,"Discount":30,"status":"ok"},{"ID":"1231","Number":"33053033","Card":"66007F29C7","Type":"7","CardGroup":"Універсальна","WaterQty":0,"AllQty":6,"MoneyPerMonth":0,"LitresPerDay":0,"Discount":20,"status":"ok"},{"ID":"1232","Number":"33053034","Card":"66007F1D04","Type":"7","CardGroup":"Універсальна","WaterQty":0,"AllQty":1237,"MoneyPerMonth":0,"LitresPerDay":0,"Discount":30,"status":"ok"}]
+}
+}
+Додавання юзера /user/add/index.php, POST request in JSON format
+json tags: phone_number, first_name, last_name, date_birth, email
+phone_number – 380685551125
+name - Ігор Петренко
+date_birth - 03.08.1990
+email - abc@gmail.com
+відповідь json
+{"status":"success",“descr”:”user created”}
+{"status":"error",“descr”:” login already exists”}
+{"status":"error",“descr”:”database error”}
+{"status":"error",“descr”:”phone number is missing”}
+{"status":"error",“descr”:”user name is missing”}
+
+Статистика продажу води /water/index.php, POST request in JSON format
+json tags: device_id, ds, de
+device_id – id апарата
+ds – дата початок (‘2024-02-01 15:30:00’)
+de – дата кінець (‘2024-02-01 18:40:00’)
+
+відповідь json
+{"status":"success",
+“log”:[ {"date":<дата час>,"wz":<к-сть замовленої води>,"wg":<к-сть наданої води>,"mt":":<готівка>,"mt_bn":<безготівка>,"mt_www":<кошти через сайт>,"sd":<решта>,"logdelayed":<Y або N>,"cardid":<номер картки або 0>}, ……
+
+{"status":"error",“descr”:”date invalid”}
+{"status":"error",“descr”:” device invalid”}
+
+Статистика якості води /water_quality.php, POST request in JSON format
+json tags: device_id, ds, de
+device_id – id апарата
+ds – дата початок (‘2024-02-01’)
+de – дата кінець (‘2024-02-15’)
+
+відповідь json
+{"status":"success",
+ “device_id”:”номер апарата”,
+ “address”:”адреса апарата”,
+“data”:[ {"date":<дата>,"value":<val>,"tds":<ТДС>}, ……
+якщо даних за цей період немає, то поле data буде відсутнє
+
+{"status":"error",“descr”:”date invalid”}
+{"status":"error",“descr”:” device invalid”}
+
+Швидкість фільтрації води /water_filter_speed.php, POST request in JSON format
+json tags: device_id, ds, de
+device_id – id апарата
+ds – дата початок (‘2024-02-01’)
+de – дата кінець (‘2024-02-15’)
+
+відповідь json
+{"status":"success",
+ “device_id”:”номер апарата”,
+ “address”:”адреса апарата”,
+“data”:[ {"date":<дата>,"speed":<val>}, ……
+якщо даних за цей період немає, то поле data буде відсутнє
+
+{"status":"error",“descr”:”date invalid”}
+{"status":"error",“descr”:” device invalid”}
+
+Інкасація /device_inkas.php, POST request in JSON format
+json tags: device_id, ds, de
+device_id – id апарата
+ds – дата початок (‘2024-02-01’)
+de – дата кінець (‘2024-02-15’)
+
+відповідь json
+{"status":"success",
+ “device_id”:”номер апарата”,
+ “address”:”адреса апарата”,
+“data”:[ {"date":<дата>,"card_id":<номер картки>,”sum”:<сума внесена на апарат>,”banknotes”:<купюри в апараті>,”coins”:<копійки в апараті>,”descr”:<опис>}, ……
+якщо даних за цей період немає, то поле data буде відсутнє
+
+{"status":"error",“descr”:”date invalid”}
+{"status":"error",“descr”:” device invalid”}
+
+Інформація по сенсорам на апараті /device_sensors.php, POST request in JSON format
+json tags: device_id
+device_id – id апарата
+
+відповідь json
+{"status":"success",
+ “device_id”:”номер апарата”,
+ “address”:”адреса апарата”,
+“data”:[ {"date":<дата>,"name":<коротка назва давача>,”state”:<on/off>,”sens_val”:<значення давача>,”descr”:<опис давача>}, ……
+якщо даних немає, то поле data буде відсутнє
+
+{"status":"error",“descr”:” device invalid”}
+
+
+Інформація по стану фісказізації на апараті /device_fiscal.php, POST request in JSON format
+json tags: device_id
+device_id – id апарата
+
+відповідь json
+{"status":"success",
+ “device_id”:”номер апарата”,
+ “address”:”адреса апарата”,
+“fiscal”:"OK"  // фіскалізація включена і останній чек має статус проведеного
+“fiscal”:"error"  // фіскалізація включена і останній чек має статус 
+“fiscal”:"not set"  // фіскалізація вимкнена на цьому апараті
+
+{"status":"error",“descr”:” device invalid”}
+
+
+
+

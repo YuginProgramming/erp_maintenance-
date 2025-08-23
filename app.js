@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { handleMaintenanceCommand, handleMachinesCommand, handleAlertsCommand } from './maintenance-handler.js';
+import { sendDeviceListToTelegram } from './device-handler.js';
+import { sendDeviceCollectionToTelegram, getDefaultDateRange } from './device-collection-handler.js';
 
 dotenv.config();
 
@@ -21,6 +23,8 @@ bot.setMyCommands([
     { command: '/maintenance', description: 'Show maintenance tasks' },
     { command: '/machines', description: 'Show machine status' },
     { command: '/alerts', description: 'Show urgent alerts' },
+    { command: '/devices', description: 'Show active devices from API' },
+    { command: '/collection', description: 'Show device collection data' },
     { command: '/help', description: 'Show help information' }
 ]);
 
@@ -42,6 +46,33 @@ bot.onText(/\/alerts/, async (msg) => {
     await handleAlertsCommand(bot, chatId);
 });
 
+// Handle /devices command
+bot.onText(/\/devices/, async (msg) => {
+    const chatId = msg.chat.id;
+    await sendDeviceListToTelegram(bot, chatId);
+});
+
+// Handle /collection command with parameters
+bot.onText(/\/collection(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const { startDate, endDate } = getDefaultDateRange();
+    
+    // If device ID is provided, use it; otherwise use default
+    const deviceId = match[1] || '164'; // Default to device 164 (Бандери, 69)
+    
+    await sendDeviceCollectionToTelegram(bot, chatId, deviceId, startDate, endDate);
+});
+
+// Handle /collection with date range: /collection 164 2025-06-01 2025-06-30
+bot.onText(/\/collection\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const deviceId = match[1];
+    const startDate = match[2];
+    const endDate = match[3];
+    
+    await sendDeviceCollectionToTelegram(bot, chatId, deviceId, startDate, endDate);
+});
+
 // Handle /help command
 bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
@@ -52,7 +83,16 @@ bot.onText(/\/help/, async (msg) => {
 /maintenance - View all maintenance tasks
 /machines - Check machine status and water levels
 /alerts - Show urgent maintenance alerts
+/devices - Show active devices from API
+/collection - Show device collection data (last 7 days)
+/collection [device_id] - Show collection data for specific device
+/collection [device_id] [start_date] [end_date] - Show collection data with custom date range
 /help - Show this help message
+
+**Collection Examples:**
+/collection - Default device (last 7 days)
+/collection 164 - Device 164 (last 7 days)
+/collection 164 2025-06-01 2025-06-30 - Device 164 with custom date range
 
 **Features:**
 • Maintenance task tracking

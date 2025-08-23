@@ -89,7 +89,7 @@ ${task.estimated_duration ? `⏱️ Estimated Duration: ${task.estimated_duratio
 ${task.parts_needed ? `🔧 Parts Needed: ${task.parts_needed}` : ''}
 ${task.completed_at ? `✅ Completed: ${new Date(task.completed_at).toLocaleString()}` : ''}
 ${task.scheduled_date ? `📅 Scheduled: ${new Date(task.scheduled_date).toLocaleDateString()}` : ''}
-${task.created_at ? `📅 Created: ${new Date(task.created_at).toLocaleString()}` : ''}
+${task.createdAt ? `📅 Created: ${new Date(task.createdAt).toLocaleString()}` : ''}
 `;
 }
 
@@ -196,7 +196,7 @@ async function handleMachinesCommand(bot, chatId) {
 async function handleAlertsCommand(bot, chatId) {
     try {
         const alerts = await sequelize.query(
-            "SELECT * FROM maintenance_tasks WHERE status = 'urgent' OR priority = 'critical' ORDER BY created_at DESC;",
+            "SELECT * FROM maintenance_tasks WHERE status = 'urgent' OR priority = 'critical' ORDER BY \"createdAt\" DESC;",
             { type: sequelize.QueryTypes.SELECT }
         );
 
@@ -218,7 +218,7 @@ async function handleAlertsCommand(bot, chatId) {
 🔧 **Type:** ${formatMaintenanceType(alert.maintenance_type)}
 📍 **Location:** ${alert.location || 'Not specified'}
 🖥️ **Machine:** ${alert.machine_id || 'Not specified'}
-⏰ **Created:** ${new Date(alert.created_at).toLocaleString()}
+⏰ **Created:** ${new Date(alert.createdAt).toLocaleString()}
 💬 **Description:** ${alert.description || 'No description'}`;
 
             await bot.sendMessage(chatId, alertMessage, { parse_mode: 'Markdown' });
