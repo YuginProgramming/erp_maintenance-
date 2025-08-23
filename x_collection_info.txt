@@ -1,0 +1,28 @@
+File Generated: x-collection-api.json
+📊 Investigation Results:
+Date Range: August 16-23, 2025 (Last week)
+Devices Investigated: 10 key devices
+Total Collection Entries: 2 entries (well under the 20 limit)
+Devices with Data: 1 device
+Devices without Data: 9 devices
+💰 Collection Data Found:
+Device 164 - Бандери, 69:
+2 collection entries from August 20, 2025
+Total Banknotes: 1,934.00 грн
+Total Coins: 2,295.00 грн
+Collector Card ID: 23129
+Collector: Ігор (encoded in the description)
+🔍 Key Insights from the Data:
+Collection Pattern: Money was collected in two separate operations:
+First: Banknotes only (1,934 грн)
+Second: Coins only (2,295 грн)
+Collection Timing: Both collections happened on the same day (August 20) within 4 seconds of each other
+Data Structure: The API returns detailed information including:
+Collection date and time
+Card ID of the collector
+Separate banknote and coin amounts
+Collector description (though encoded)
+Limitations Applied:
+Maximum 20 entries per device
+Maximum 20 total entries across all devices
+Global limit tracking to prevent exceeding limits

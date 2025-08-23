@@ -1,5 +1,5 @@
 import axios from "axios";
-import { logger } from "./logger/index.js";
+import { logger } from "../logger/index.js";
 
 // Function to fetch device collection data from API
 const fetchDeviceCollection = async (device_id, startDate, endDate) => {

@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "generated_at": "2025-08-23T12:23:24.330Z",
+    "date_range": {
+      "start": "2025-08-16",
+      "end": "2025-08-23"
+    },
+    "total_devices_investigated": 10,
+    "api_endpoint": "https://soliton.net.ua/water/api/device_inkas.php",
+    "investigation_type": "focused_key_devices",
+    "max_entries_per_device": 20,
+    "max_total_entries": 20
+  },
+  "devices": [
+    {
+      "device_id": "153",
+      "device_name": "Антонича, 6 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 153,
+        "address": "Антонича, 6 Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "164",
+      "device_name": "Бандери, 69 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 164,
+        "address": "Бандери, 69 Близенько 2.00 грн",
+        "data": [
+          {
+            "card_id": "23129",
+            "sum": "0.00",
+            "banknotes": "1934.00",
+            "coins": "0.00",
+            "descr": "Р†РіРѕСЂ  - ",
+            "date": "2025-08-20 14:00:28"
+          },
+          {
+            "card_id": "23129",
+            "sum": "0.00",
+            "banknotes": "0.00",
+            "coins": "2295.00",
+            "descr": "Р†РіРѕСЂ  - ",
+            "date": "2025-08-20 14:00:32"
+          }
+        ]
+      },
+      "totals": {
+        "sum": 0,
+        "banknotes": 1934,
+        "coins": 2295,
+        "entries_count": 2,
+        "total_entries_available": 2,
+        "entries_limited": false,
+        "limited_by_global_limit": false
+      }
+    },
+    {
+      "device_id": "228",
+      "device_name": "Сокільники, Весняна, 18 Близенько 1.50 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 228,
+        "address": "Сокільники, Весняна, 18 Близенько 1.50 грн"
+      }
+    },
+    {
+      "device_id": "240",
+      "device_name": "Багряного, 39 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 240,
+        "address": "Багряного, 39 Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "190",
+      "device_name": "Братів Міхновських, 23 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 190,
+        "address": "Братів Міхновських,  23  Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "236",
+      "device_name": "Брюховицька, 143 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 236,
+        "address": "Брюховицька, 143 Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "156",
+      "device_name": "Брюховичі Івасюка, 1 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 156,
+        "address": "Брюховичі Івасюка, 1 Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "243",
+      "device_name": "Брюховичі Львівська, 92 Близенько 2.00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 243,
+        "address": "Брюховичі Львівська, 92 Близенько 2.00 грн"
+      }
+    },
+    {
+      "device_id": "344",
+      "device_name": "Брюховичі, Весняна, 1а",
+      "collection_data": {
+        "status": "success",
+        "device_id": 344,
+        "address": "Брюховичі, Весняна, 1а"
+      }
+    },
+    {
+      "device_id": "179",
+      "device_name": "В.Великого, 1 Близенько 2,00 грн",
+      "collection_data": {
+        "status": "success",
+        "device_id": 179,
+        "address": "В.Великого, 1 Близенько 2,00 грн"
+      }
+    }
+  ],
+  "summary": {
+    "total_collection_entries": 2,
+    "total_sum": 0,
+    "total_banknotes": 1934,
+    "total_coins": 2295,
+    "devices_with_data": 1,
+    "devices_without_data": 9,
+    "entries_limited_by_global_limit": false
+  }
+}

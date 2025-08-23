@@ -1,5 +1,5 @@
 import axios from "axios";
-import { logger } from "./logger/index.js";
+import { logger } from "../logger/index.js";
 
 // Configuration
 const MAX_DEVICES_TO_SEND = 20; // Limit to prevent spam

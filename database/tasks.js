@@ -59,7 +59,7 @@ const markTaskAsDone = async (taskId) => {
 };
   
 
-import { Worker } from './workers.js';   
+import { Worker } from './workers-table.js';   
 Task.belongsTo(Worker, { foreignKey: 'workerId' });
 Worker.hasMany(Task, { foreignKey: 'workerId' });
 

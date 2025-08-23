@@ -197,6 +197,71 @@ const WaterQualityTest = sequelize.define('WaterQualityTest', {
     timestamps: true
 });
 
+// Collection model for storing collection data
+const Collection = sequelize.define('Collection', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    date: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        comment: 'Дата інкасації'
+    },
+    sum_banknotes: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        comment: 'Сума купюри'
+    },
+    sum_coins: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        comment: 'Сума копійки'
+    },
+    total_sum: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false,
+        defaultValue: 0.00,
+        comment: 'Загальна сума (купюри + монети)'
+    },
+    note: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Примітка'
+    },
+    machine: {
+        type: DataTypes.TEXT,
+        allowNull: false,
+        comment: 'Апарат'
+    },
+    collector_id: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        comment: 'ID збирача'
+    },
+    collector_nik: {
+        type: DataTypes.STRING(100),
+        allowNull: true,
+        comment: 'Нік збирача'
+    },
+    device_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        comment: 'ID апарата'
+    }
+}, {
+    tableName: 'collections',
+    timestamps: true,
+    createdAt: 'created_at',
+    updatedAt: 'updated_at'
+});
+
+// Import Worker model from separate file
+import { Worker } from './workers-table.js';
+
 // Define relationships
 MaintenanceTask.belongsTo(VendingMachine, { foreignKey: 'machine_id', as: 'machine' });
 VendingMachine.hasMany(MaintenanceTask, { foreignKey: 'machine_id', as: 'maintenanceTasks' });
@@ -210,4 +275,4 @@ VendingMachine.hasMany(WaterQualityTest, { foreignKey: 'machine_id', as: 'qualit
 WaterQualityTest.belongsTo(Technician, { foreignKey: 'tested_by', as: 'tester' });
 Technician.hasMany(WaterQualityTest, { foreignKey: 'tested_by', as: 'conductedTests' });
 
-export { MaintenanceTask, VendingMachine, Technician, WaterQualityTest };
+export { MaintenanceTask, VendingMachine, Technician, WaterQualityTest, Collection, Worker };
