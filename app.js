@@ -188,7 +188,18 @@ bot.on('error', (error) => {
 });
 
 bot.on('polling_error', (error) => {
-    console.error('Polling error:', error);
+    if (error.code === 'ETELEGRAM' && error.response && error.response.body && error.response.body.description && error.response.body.description.includes('Conflict')) {
+        console.error('❌ Bot conflict detected: Another instance is running');
+        console.error('💡 Solution: Stop other bot instances and restart this one');
+        console.error('💡 You can use: pkill -f "node app.js" to stop all instances');
+        
+        // Optionally exit the process after a delay
+        setTimeout(() => {
+            console.log('🔄 Attempting to restart bot in 10 seconds...');
+        }, 10000);
+    } else {
+        console.error('Polling error:', error);
+    }
 });
 
 // Start the bot
