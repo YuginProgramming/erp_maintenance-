@@ -69,27 +69,57 @@ function formatMaintenanceType(type) {
     }
 }
 
+// Function to escape Markdown special characters
+function escapeMarkdown(text) {
+    if (!text) return '';
+    return text.toString()
+        .replace(/_/g, '\\_')
+        .replace(/\*/g, '\\*')
+        .replace(/\[/g, '\\[')
+        .replace(/\]/g, '\\]')
+        .replace(/\(/g, '\\(')
+        .replace(/\)/g, '\\)')
+        .replace(/~/g, '\\~')
+        .replace(/`/g, '\\`')
+        .replace(/>/g, '\\>')
+        .replace(/#/g, '\\#')
+        .replace(/\+/g, '\\+')
+        .replace(/-/g, '\\-')
+        .replace(/=/g, '\\=')
+        .replace(/\|/g, '\\|')
+        .replace(/\{/g, '\\{')
+        .replace(/\}/g, '\\}')
+        .replace(/\./g, '\\.')
+        .replace(/!/g, '\\!');
+}
+
 // Format single maintenance task for display
 function formatMaintenanceTask(task, index) {
     const statusEmoji = formatMaintenanceStatus(task.status);
     const priorityEmoji = formatMaintenancePriority(task.priority);
     const typeEmoji = formatMaintenanceType(task.maintenance_type);
-    const description = task.description || 'No description provided';
-    const location = task.location || 'Location not specified';
+    const description = escapeMarkdown(task.description || 'No description provided');
+    const location = escapeMarkdown(task.location || 'Location not specified');
+    const title = escapeMarkdown(task.title);
+    
+    // Format dates safely
+    const completedDate = task.completed_at ? new Date(task.completed_at).toLocaleString('en-US') : '';
+    const scheduledDate = task.scheduled_date ? new Date(task.scheduled_date).toLocaleDateString('en-US') : '';
+    const createdDate = task.createdAt ? new Date(task.createdAt).toLocaleString('en-US') : '';
     
     return `🔧 **Maintenance Task #${task.id}**
 ${statusEmoji} | ${priorityEmoji}
 ${typeEmoji}
-📝 **${task.title}**
+📝 **${title}**
 💬 ${description}
 📍 **Location:** ${location}
 ${task.machine_id ? `🖥️ Machine ID: ${task.machine_id}` : ''}
 ${task.technician_id ? `👨‍🔧 Technician: ${task.technician_id}` : ''}
 ${task.estimated_duration ? `⏱️ Estimated Duration: ${task.estimated_duration}` : ''}
-${task.parts_needed ? `🔧 Parts Needed: ${task.parts_needed}` : ''}
-${task.completed_at ? `✅ Completed: ${new Date(task.completed_at).toLocaleString()}` : ''}
-${task.scheduled_date ? `📅 Scheduled: ${new Date(task.scheduled_date).toLocaleDateString()}` : ''}
-${task.createdAt ? `📅 Created: ${new Date(task.createdAt).toLocaleString()}` : ''}
+${task.parts_needed ? `🔧 Parts Needed: ${escapeMarkdown(task.parts_needed)}` : ''}
+${completedDate ? `✅ Completed: ${completedDate}` : ''}
+${scheduledDate ? `📅 Scheduled: ${scheduledDate}` : ''}
+${createdDate ? `📅 Created: ${createdDate}` : ''}
 `;
 }
 
@@ -171,13 +201,18 @@ async function handleMachinesCommand(bot, chatId) {
         // Send each machine status individually
         for (let i = 0; i < machines.length; i++) {
             const machine = machines[i];
+            const location = escapeMarkdown(machine.location || 'Not specified');
+            const status = escapeMarkdown(machine.status || 'Unknown');
+            const alerts = escapeMarkdown(machine.alerts || 'None');
+            const lastMaintenance = machine.last_maintenance ? new Date(machine.last_maintenance).toLocaleDateString('en-US') : 'Never';
+            
             const machineMessage = `🖥️ **Machine #${machine.id}**
-📍 **Location:** ${machine.location || 'Not specified'}
+📍 **Location:** ${location}
 💧 **Water Level:** ${machine.water_level || 'Unknown'}%
-🔧 **Status:** ${machine.status || 'Unknown'}
+🔧 **Status:** ${status}
 📊 **Daily Sales:** ${machine.daily_sales || 0} liters
-🔄 **Last Maintenance:** ${machine.last_maintenance ? new Date(machine.last_maintenance).toLocaleDateString() : 'Never'}
-⚠️ **Alerts:** ${machine.alerts || 'None'}`;
+🔄 **Last Maintenance:** ${lastMaintenance}
+⚠️ **Alerts:** ${alerts}`;
 
             await bot.sendMessage(chatId, machineMessage, { parse_mode: 'Markdown' });
             
@@ -214,12 +249,17 @@ async function handleAlertsCommand(bot, chatId) {
         // Send each alert individually
         for (let i = 0; i < alerts.length; i++) {
             const alert = alerts[i];
-            const alertMessage = `🚨 **URGENT: ${alert.title}**
+            const title = escapeMarkdown(alert.title);
+            const location = escapeMarkdown(alert.location || 'Not specified');
+            const description = escapeMarkdown(alert.description || 'No description');
+            const createdDate = new Date(alert.createdAt).toLocaleString('en-US');
+            
+            const alertMessage = `🚨 **URGENT: ${title}**
 🔧 **Type:** ${formatMaintenanceType(alert.maintenance_type)}
-📍 **Location:** ${alert.location || 'Not specified'}
+📍 **Location:** ${location}
 🖥️ **Machine:** ${alert.machine_id || 'Not specified'}
-⏰ **Created:** ${new Date(alert.createdAt).toLocaleString()}
-💬 **Description:** ${alert.description || 'No description'}`;
+⏰ **Created:** ${createdDate}
+💬 **Description:** ${description}`;
 
             await bot.sendMessage(chatId, alertMessage, { parse_mode: 'Markdown' });
             
