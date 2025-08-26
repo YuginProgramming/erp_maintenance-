@@ -1,4 +1,4 @@
-import { sequelize } from './database/sequelize.js';
+import { sequelize } from '../database/sequelize.js';
 
 // Get all maintenance tasks from database
 async function getAllMaintenanceTasks() {
