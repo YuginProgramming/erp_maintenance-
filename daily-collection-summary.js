@@ -137,7 +137,6 @@ const sendDailySummaryToTelegram = async (bot, chatId, targetDate) => {
         
         // Always send a message, whether there's data or not
         await bot.sendMessage(chatId, summary.message, { 
-            parse_mode: 'Markdown',
             disable_web_page_preview: true
         });
         
@@ -203,7 +202,6 @@ const sendDailySummaryToAllWorkers = async (bot, targetDate) => {
             try {
                 // Always send a message, whether there's data or not
                 await bot.sendMessage(worker.chat_id, summary.message, { 
-                    parse_mode: 'Markdown',
                     disable_web_page_preview: true
                 });
                 

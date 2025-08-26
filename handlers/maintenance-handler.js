@@ -107,12 +107,12 @@ function formatMaintenanceTask(task, index) {
     const scheduledDate = task.scheduled_date ? new Date(task.scheduled_date).toLocaleDateString('en-US') : '';
     const createdDate = task.createdAt ? new Date(task.createdAt).toLocaleString('en-US') : '';
     
-    return `🔧 **Maintenance Task #${task.id}**
+    return `🔧 Maintenance Task #${task.id}
 ${statusEmoji} | ${priorityEmoji}
 ${typeEmoji}
-📝 **${title}**
+📝 ${title}
 💬 ${description}
-📍 **Location:** ${location}
+📍 Location: ${location}
 ${task.machine_id ? `🖥️ Machine ID: ${task.machine_id}` : ''}
 ${task.technician_id ? `👨‍🔧 Technician: ${task.technician_id}` : ''}
 ${task.estimated_duration ? `⏱️ Estimated Duration: ${task.estimated_duration}` : ''}
@@ -154,8 +154,7 @@ async function handleMaintenanceCommand(bot, chatId) {
 
         await bot.editMessageText(summary, {
             chat_id: chatId,
-            message_id: loadingMsg.message_id,
-            parse_mode: 'Markdown'
+            message_id: loadingMsg.message_id
         });
 
         // Send each maintenance task individually
@@ -163,9 +162,7 @@ async function handleMaintenanceCommand(bot, chatId) {
             const task = tasks[i];
             const taskMessage = formatMaintenanceTask(task, i);
             
-            await bot.sendMessage(chatId, taskMessage, { 
-                parse_mode: 'Markdown' 
-            });
+            await bot.sendMessage(chatId, taskMessage);
             
             // Add small delay between messages to avoid rate limiting
             if (i < tasks.length - 1) {
@@ -196,7 +193,7 @@ async function handleMachinesCommand(bot, chatId) {
 📊 **Total Machines: ${machines.length}**
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-        await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
+        await bot.sendMessage(chatId, summary);
 
         // Send each machine status individually
         for (let i = 0; i < machines.length; i++) {
@@ -206,15 +203,15 @@ async function handleMachinesCommand(bot, chatId) {
             const alerts = escapeMarkdown(machine.alerts || 'None');
             const lastMaintenance = machine.last_maintenance ? new Date(machine.last_maintenance).toLocaleDateString('en-US') : 'Never';
             
-            const machineMessage = `🖥️ **Machine #${machine.id}**
-📍 **Location:** ${location}
-💧 **Water Level:** ${machine.water_level || 'Unknown'}%
-🔧 **Status:** ${status}
-📊 **Daily Sales:** ${machine.daily_sales || 0} liters
-🔄 **Last Maintenance:** ${lastMaintenance}
-⚠️ **Alerts:** ${alerts}`;
+            const machineMessage = `🖥️ Machine #${machine.id}
+📍 Location: ${location}
+💧 Water Level: ${machine.water_level || 'Unknown'}%
+🔧 Status: ${status}
+📊 Daily Sales: ${machine.daily_sales || 0} liters
+🔄 Last Maintenance: ${lastMaintenance}
+⚠️ Alerts: ${alerts}`;
 
-            await bot.sendMessage(chatId, machineMessage, { parse_mode: 'Markdown' });
+            await bot.sendMessage(chatId, machineMessage);
             
             if (i < machines.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -244,7 +241,7 @@ async function handleAlertsCommand(bot, chatId) {
 ⚠️ **Critical Issues: ${alerts.length}**
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-        await bot.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
+        await bot.sendMessage(chatId, summary);
 
         // Send each alert individually
         for (let i = 0; i < alerts.length; i++) {
@@ -254,14 +251,14 @@ async function handleAlertsCommand(bot, chatId) {
             const description = escapeMarkdown(alert.description || 'No description');
             const createdDate = new Date(alert.createdAt).toLocaleString('en-US');
             
-            const alertMessage = `🚨 **URGENT: ${title}**
-🔧 **Type:** ${formatMaintenanceType(alert.maintenance_type)}
-📍 **Location:** ${location}
-🖥️ **Machine:** ${alert.machine_id || 'Not specified'}
-⏰ **Created:** ${createdDate}
-💬 **Description:** ${description}`;
+            const alertMessage = `🚨 URGENT: ${title}
+🔧 Type: ${formatMaintenanceType(alert.maintenance_type)}
+📍 Location: ${location}
+🖥️ Machine: ${alert.machine_id || 'Not specified'}
+⏰ Created: ${createdDate}
+💬 Description: ${description}`;
 
-            await bot.sendMessage(chatId, alertMessage, { parse_mode: 'Markdown' });
+            await bot.sendMessage(chatId, alertMessage);
             
             if (i < alerts.length - 1) {
                 await new Promise(resolve => setTimeout(resolve, 100));

@@ -220,7 +220,7 @@ bot.onText(/\/help/, async (msg) => {
 Потрібна технічна підтримка? Зверніться до команди обслуговування.
     `;
 
-    await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
+    await bot.sendMessage(chatId, helpMessage);
 });
 
 // Error handling
