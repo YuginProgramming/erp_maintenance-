@@ -39,15 +39,15 @@ const filterActiveDevices = (devices) => {
 // Function to format a single device for Telegram message
 const formatSingleDevice = (device, index) => {
     const deviceNumber = index + 1;
-    const status = device.lat && device.lon ? "🟢 Active" : "🔴 Inactive";
+    const status = device.lat && device.lon ? "Активний" : "Неактивний";
     
-    let message = `📱 **Device #${deviceNumber}**\n`;
+    let message = `📱 **Апарат #${deviceNumber}**\n`;
     message += `**${device.name}**\n`;
     message += `ID: \`${device.id}\`\n`;
-    message += `Status: ${status}\n`;
+    message += `Статус: ${status}\n`;
     
     if (device.lat && device.lon) {
-        message += `📍 Location: ${device.lat}, ${device.lon}\n`;
+        message += `Розташування: ${device.lat}, ${device.lon}\n`;
     }
     
     return message;
@@ -55,20 +55,20 @@ const formatSingleDevice = (device, index) => {
 
 // Function to format device summary for Telegram message
 const formatDeviceSummary = (activeCount, totalCount) => {
-    return `📱 **Device Summary**\n\n🟢 Active Devices: ${activeCount}\n📊 Total Devices: ${totalCount}\n\n💬 Sending device details...`;
+    return `📱 **Підсумок апаратів**\n\nАктивні апарати: ${activeCount}\nВсього апаратів: ${totalCount}\n\nНадсилання деталей апаратів...`;
 };
 
 // Main function to send device list to Telegram (each device as separate message)
 const sendDeviceListToTelegram = async (bot, chatId) => {
     try {
         // Send loading message
-        const loadingMsg = await bot.sendMessage(chatId, '📱 Fetching active devices...');
+        const loadingMsg = await bot.sendMessage(chatId, '📱 Отримання активних апаратів...');
 
         // Fetch devices from API
         const allDevices = await fetchDevices();
         
         if (!allDevices) {
-            await bot.editMessageText('❌ Failed to fetch devices from API. Please try again later.', {
+            await bot.editMessageText('❌ Не вдалося отримати апарати з API. Спробуйте ще раз пізніше.', {
                 chat_id: chatId,
                 message_id: loadingMsg.message_id
             });
@@ -79,7 +79,7 @@ const sendDeviceListToTelegram = async (bot, chatId) => {
         const activeDevices = filterActiveDevices(allDevices);
         
         if (activeDevices.length === 0) {
-            await bot.editMessageText('❌ No active devices found.', {
+            await bot.editMessageText('❌ Активних апаратів не знайдено.', {
                 chat_id: chatId,
                 message_id: loadingMsg.message_id
             });
@@ -117,10 +117,10 @@ const sendDeviceListToTelegram = async (bot, chatId) => {
         }
 
         // Send completion message
-        let completionMessage = `✅ **Complete!** Sent details for ${devicesToSend.length} active devices.`;
+        let completionMessage = `✅ **Завершено!** Надіслано деталі для ${devicesToSend.length} активних апаратів.`;
         if (hasMoreDevices) {
             const remainingCount = activeDevices.length - MAX_DEVICES_TO_SEND;
-            completionMessage += `\n\n📋 **Note:** ${remainingCount} more devices available. Showing first ${MAX_DEVICES_TO_SEND} to avoid spam.`;
+            completionMessage += `\n\n**Примітка:** Ще ${remainingCount} апаратів доступно. Показано перші ${MAX_DEVICES_TO_SEND} щоб уникнути спаму.`;
         }
         await bot.sendMessage(chatId, completionMessage, { parse_mode: 'Markdown' });
 
@@ -131,7 +131,7 @@ const sendDeviceListToTelegram = async (bot, chatId) => {
         
         // Try to send error message
         try {
-            await bot.sendMessage(chatId, '❌ Error fetching device list. Please try again later.');
+            await bot.sendMessage(chatId, '❌ Помилка отримання списку апаратів. Спробуйте ще раз пізніше.');
         } catch (sendError) {
             logger.error(`Failed to send error message to chat ${chatId}: ${sendError.message}`);
         }

@@ -2,11 +2,12 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { handleMaintenanceCommand, handleMachinesCommand, handleAlertsCommand } from './maintenance-handler.js';
+import { handleMaintenanceCommand, handleMachinesCommand, handleAlertsCommand } from './handlers/maintenance-handler.js';
 import { sendDeviceListToTelegram } from './device/device-handler.js';
 import { sendDeviceCollectionToTelegram, getDefaultDateRange } from './device/device-collection-handler.js';
 import { scheduleDailyCollection, scheduleDailySummary, fetchDailyCollectionData } from './daily-collection-scheduler.js';
-import { sendDailySummaryToTelegram, sendDailySummaryToAllWorkers, getYesterdayDate, getTodayDate } from './daily-collection-summary.js';
+import { sendDailySummaryToTelegram, sendDailySummaryToAllWorkers, getYesterdayDate, getTodayDate, checkCurrentCollectionData } from './daily-collection-summary.js';
+import { scheduleDailyCompletenessCheck, checkAndFillMissingData } from './database-completeness-checker.js';
 
 dotenv.config();
 
@@ -78,13 +79,13 @@ bot.onText(/\/collection\s+(\d+)\s+(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})/, a
 // Handle /fetch_daily command (manual trigger for daily collection fetch)
 bot.onText(/\/fetch_daily/, async (msg) => {
     const chatId = msg.chat.id;
-    await bot.sendMessage(chatId, '🔄 Starting manual daily collection data fetch...');
+    await bot.sendMessage(chatId, '🔄 Запуск ручного щоденного збору даних інкасації...');
     
     try {
         await fetchDailyCollectionData();
-        await bot.sendMessage(chatId, '✅ Daily collection data fetch completed successfully!');
+        await bot.sendMessage(chatId, '✅ Щоденний збір даних інкасації успішно завершено!');
     } catch (error) {
-        await bot.sendMessage(chatId, `❌ Error during daily collection fetch: ${error.message}`);
+        await bot.sendMessage(chatId, `❌ Помилка під час щоденного збору даних: ${error.message}`);
     }
 });
 
@@ -93,12 +94,12 @@ bot.onText(/\/summary(?:\s+(\d{4}-\d{2}-\d{2}))?/, async (msg, match) => {
     const chatId = msg.chat.id;
     const targetDate = match[1] || getYesterdayDate(); // Default to yesterday if no date provided
     
-    await bot.sendMessage(chatId, `📊 Generating daily collection summary for ${targetDate}...`);
+    await bot.sendMessage(chatId, `📊 Генерація щоденного звіту інкасації для ${targetDate}...`);
     
     try {
         await sendDailySummaryToTelegram(bot, chatId, targetDate);
     } catch (error) {
-        await bot.sendMessage(chatId, `❌ Error generating summary: ${error.message}`);
+        await bot.sendMessage(chatId, `❌ Помилка генерації звіту: ${error.message}`);
     }
 });
 
@@ -107,12 +108,12 @@ bot.onText(/\/summary_today/, async (msg) => {
     const chatId = msg.chat.id;
     const today = getTodayDate();
     
-    await bot.sendMessage(chatId, `📊 Generating today's collection summary for ${today}...`);
+    await bot.sendMessage(chatId, `📊 Генерація сьогоднішнього звіту інкасації для ${today}...`);
     
     try {
         await sendDailySummaryToTelegram(bot, chatId, today);
     } catch (error) {
-        await bot.sendMessage(chatId, `❌ Error generating summary: ${error.message}`);
+        await bot.sendMessage(chatId, `❌ Помилка генерації звіту: ${error.message}`);
     }
 });
 
@@ -121,13 +122,49 @@ bot.onText(/\/send_summary_all(?:\s+(\d{4}-\d{2}-\d{2}))?/, async (msg, match) =
     const chatId = msg.chat.id;
     const targetDate = match[1] || getYesterdayDate();
     
-    await bot.sendMessage(chatId, `📊 Sending daily collection summary for ${targetDate} to all workers...`);
+    await bot.sendMessage(chatId, `📊 Надсилання щоденного звіту інкасації для ${targetDate} всім працівникам...`);
     
     try {
         const result = await sendDailySummaryToAllWorkers(bot, targetDate);
-        await bot.sendMessage(chatId, `✅ Summary sent to ${result.successfulSends}/${result.totalWorkers} workers successfully`);
+        await bot.sendMessage(chatId, `✅ Звіт надіслано ${result.successfulSends}/${result.totalWorkers} працівникам успішно`);
     } catch (error) {
-        await bot.sendMessage(chatId, `❌ Error sending summary to workers: ${error.message}`);
+        await bot.sendMessage(chatId, `❌ Помилка надсилання звіту працівникам: ${error.message}`);
+    }
+});
+
+// Handle /check_data command to debug collection data
+bot.onText(/\/check_data(?:\s+(\d{4}-\d{2}-\d{2}))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const targetDate = match[1] || getYesterdayDate();
+    
+    await bot.sendMessage(chatId, `🔍 Перевірка даних інкасації для ${targetDate}...`);
+    
+    try {
+        const collections = await checkCurrentCollectionData(targetDate);
+        if (collections.length === 0) {
+            await bot.sendMessage(chatId, `❌ Дані інкасації для ${targetDate} не знайдено`);
+        } else {
+            await bot.sendMessage(chatId, `✅ Знайдено ${collections.length} записів інкасації для ${targetDate}`);
+        }
+    } catch (error) {
+        await bot.sendMessage(chatId, `❌ Помилка перевірки даних: ${error.message}`);
+    }
+});
+
+// Handle /completeness_check command (manual trigger for database completeness check)
+bot.onText(/\/completeness_check/, async (msg) => {
+    const chatId = msg.chat.id;
+    await bot.sendMessage(chatId, '🔄 Запуск ручної перевірки повноти бази даних (попередні 30 днів)...');
+    
+    try {
+        const result = await checkAndFillMissingData();
+        if (result.success) {
+            await bot.sendMessage(chatId, `✅ **Перевірка повноти бази даних завершена!**\n\nРезультати:\n• Тривалість: ${result.duration}с\n• Перевірено дат: ${result.datesChecked}\n• Оброблено дат: ${result.datesProcessed}\n• Пропущено дат: ${result.datesSkipped}\n• Всього записів збережено: ${result.totalSaved}`);
+        } else {
+            await bot.sendMessage(chatId, `❌ Помилка під час перевірки повноти: ${result.error}`);
+        }
+    } catch (error) {
+        await bot.sendMessage(chatId, `❌ Помилка під час перевірки повноти: ${error.message}`);
     }
 });
 
@@ -135,48 +172,52 @@ bot.onText(/\/send_summary_all(?:\s+(\d{4}-\d{2}-\d{2}))?/, async (msg, match) =
 bot.onText(/\/help/, async (msg) => {
     const chatId = msg.chat.id;
     const helpMessage = `
-🔧 **Water Vending Machine Maintenance Bot**
+🔧 **Бот обслуговування автоматів з водою**
 
-**Available Commands:**
-/maintenance - View all maintenance tasks
-/machines - Check machine status and water levels
-/alerts - Show urgent maintenance alerts
-/devices - Show active devices from API
-/collection - Show device collection data (last 7 days)
-/collection [device_id] - Show collection data for specific device
-/collection [device_id] [start_date] [end_date] - Show collection data with custom date range
-/fetch_daily - Manually trigger daily collection data fetch
-/summary - Show yesterday's collection summary
-/summary [YYYY-MM-DD] - Show collection summary for specific date
-/summary_today - Show today's collection summary
-/send_summary_all - Send summary to all workers
-/send_summary_all [YYYY-MM-DD] - Send summary to all workers for specific date
-/help - Show this help message
+**Доступні команди:**
+/maintenance - Перегляд всіх завдань обслуговування
+/machines - Перевірка статусу машин та рівня води
+/alerts - Показ термінових сповіщень
+/devices - Показ активних апаратів з API
+/collection - Показ даних інкасації апарату (останні 7 днів)
+/collection [device_id] - Показ даних інкасації для конкретного апарату
+/collection [device_id] [start_date] [end_date] - Показ даних інкасації з власним діапазоном дат
+/fetch_daily - Ручний запуск щоденного збору даних інкасації
+/summary - Показ вчорашнього звіту інкасації
+/summary [YYYY-MM-DD] - Показ звіту інкасації для конкретної дати
+/summary_today - Показ сьогоднішнього звіту інкасації
+/send_summary_all - Надсилання звіту всім працівникам
+/send_summary_all [YYYY-MM-DD] - Надсилання звіту всім працівникам для конкретної дати
+/check_data - Перевірка даних інкасації за вчора
+/check_data [YYYY-MM-DD] - Перевірка даних інкасації для конкретної дати
+/completeness_check - Ручний запуск перевірки повноти бази даних (попередні 30 днів)
+/help - Показ цього повідомлення допомоги
 
-**Collection Examples:**
-/collection - Default device (last 7 days)
-/collection 164 - Device 164 (last 7 days)
-/collection 164 2025-06-01 2025-06-30 - Device 164 with custom date range
+**Приклади інкасації:**
+/collection - Апарат за замовчуванням (останні 7 днів)
+/collection 164 - Апарат 164 (останні 7 днів)
+/collection 164 2025-06-01 2025-06-30 - Апарат 164 з власним діапазоном дат
 
-**Features:**
-• Maintenance task tracking
-• Machine status monitoring
-• Water quality alerts
-• Technician assignment
-• Filter replacement scheduling
-• Emergency repair notifications
-• Daily collection data automation (2 PM Kyiv time)
-• Daily collection summaries (8 AM Kyiv time) with collector breakdown
+**Функції:**
+• Відстеження завдань обслуговування
+• Моніторинг статусу машин
+• Сповіщення про якість води
+• Призначення техніків
+• Планування заміни фільтрів
+• Сповіщення про аварійний ремонт
+• Автоматизація щоденного збору даних інкасації (8:00 за київським часом)
+• Щоденні звіти інкасації (8:00 за київським часом) з розподілом за інкасаторами
+• Перевірки повноти бази даних (13:00 за київським часом) - забезпечує відсутність пропущених даних
 
-**Maintenance Types:**
-🔧 Filter Replacement
-🧹 System Cleaning
-💧 Water Quality Test
-🔨 Equipment Repair
-🛡️ Preventive Maintenance
-🚨 Emergency Repair
+**Типи обслуговування:**
+🔧 Заміна фільтра
+🧹 Очищення системи
+💧 Тест якості води
+🔨 Ремонт обладнання
+🛡️ Профілактичне обслуговування
+🚨 Аварійний ремонт
 
-Need technical support? Contact the maintenance team.
+Потрібна технічна підтримка? Зверніться до команди обслуговування.
     `;
 
     await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
@@ -213,12 +254,17 @@ global.defaultChatId = process.env.DEFAULT_CHAT_ID || '269694206'; // Default ch
 // Start the daily collection scheduler
 console.log('🕐 Starting daily collection scheduler...');
 scheduleDailyCollection();
-console.log('✅ Daily collection scheduler started (runs at 2 PM Kyiv time)');
+console.log('✅ Daily collection scheduler started (runs at 8 AM Kyiv time)');
 
 // Start the daily summary scheduler
 console.log('📊 Starting daily summary scheduler...');
 scheduleDailySummary();
 console.log('✅ Daily summary scheduler started (runs at 8 AM Kyiv time)');
+
+// Start the daily completeness check scheduler
+console.log('🔄 Starting daily completeness check scheduler...');
+scheduleDailyCompletenessCheck();
+console.log('✅ Daily completeness check scheduler started (runs at 1 PM Kyiv time)');
 
 // Graceful shutdown
 process.on('SIGINT', () => {

@@ -1,6 +1,58 @@
 import axios from "axios";
 import { logger } from "../logger/index.js";
 
+// Function to extract collector information from description
+const extractCollectorInfo = (descr) => {
+    if (!descr) return { id: null, nik: null };
+    
+    // Try to decode the description (it might be encoded)
+    let decodedDescr = descr;
+    try {
+        decodedDescr = decodeURIComponent(descr);
+    } catch (e) {
+        decodedDescr = descr;
+    }
+    
+    // Handle specific encoding issues
+    if (decodedDescr === 'Р†РіРѕСЂ' || decodedDescr.includes('Р†РіРѕСЂ')) {
+        return {
+            id: 'Kirk',
+            nik: 'Kirk'
+        };
+    }
+    
+    // Handle Р"РјРёС‚СЂРѕ encoding issue
+    if (decodedDescr === 'Р"РјРёС‚СЂРѕ' || decodedDescr.includes('Р"РјРёС‚СЂРѕ')) {
+        return {
+            id: 'Anna',
+            nik: 'Anna'
+        };
+    }
+    
+    // Handle Ігор - leave as is (proper Ukrainian text)
+    if (decodedDescr === 'Ігор' || decodedDescr.includes('Ігор')) {
+        return {
+            id: 'Ігор',
+            nik: 'Ігор'
+        };
+    }
+    
+    // Extract collector info - format seems to be "Name - "
+    const match = decodedDescr.match(/^(.+?)\s*-\s*$/);
+    if (match) {
+        const collectorName = match[1].trim();
+        return {
+            id: null,
+            nik: collectorName
+        };
+    }
+    
+    return {
+        id: null,
+        nik: decodedDescr.trim() || null
+    };
+};
+
 // Function to fetch device collection data from API
 const fetchDeviceCollection = async (device_id, startDate, endDate) => {
     try {
@@ -31,22 +83,22 @@ const fetchDeviceCollection = async (device_id, startDate, endDate) => {
 // Function to format collection data for Telegram message
 const formatCollectionData = (collectionData) => {
     if (!collectionData || collectionData.error) {
-        return `❌ **Error fetching collection data**\n\n${collectionData?.error || 'Unknown error'}`;
+        return `❌ **Помилка отримання даних інкасації**\n\n${collectionData?.error || 'Невідома помилка'}`;
     }
 
     const { device_id, address, data } = collectionData;
     
     if (!data || data.length === 0) {
-        return `📊 **Device Collection Report**\n\n` +
-               `🖥️ **Device ID:** ${device_id}\n` +
-               `📍 **Address:** ${address || 'Not specified'}\n\n` +
-               `📋 **No collection data found for the specified period**`;
+        return `📊 **Звіт з інкасації апарату**\n\n` +
+               `ID апарату: ${device_id}\n` +
+               `Адреса: ${address || 'Не вказано'}\n\n` +
+               `Дані інкасації за вказаний період не знайдено`;
     }
 
-    let message = `📊 **Device Collection Report**\n\n` +
-                  `🖥️ **Device ID:** ${device_id}\n` +
-                  `📍 **Address:** ${address || 'Not specified'}\n` +
-                  `📅 **Period:** ${data.length} collection entries\n\n`;
+    let message = `📊 **Звіт з інкасації апарату**\n\n` +
+                  `ID апарату: ${device_id}\n` +
+                  `Адреса: ${address || 'Не вказано'}\n` +
+                  `Період: ${data.length} записів інкасації\n\n`;
 
     // Calculate totals
     let totalSum = 0;
@@ -59,10 +111,10 @@ const formatCollectionData = (collectionData) => {
         totalCoins += parseFloat(entry.coins) || 0;
     });
 
-    message += `💰 **Summary:**\n` +
-               `💵 Total Sum: ${totalSum.toFixed(2)} грн\n` +
-               `💳 Banknotes: ${totalBanknotes.toFixed(2)} грн\n` +
-               `🪙 Coins: ${totalCoins.toFixed(2)} грн\n\n`;
+    message += `**Підсумок:**\n` +
+               `Загальна сума: ${totalSum.toFixed(2)} грн\n` +
+               `Купюри: ${totalBanknotes.toFixed(2)} грн\n` +
+               `Монети: ${totalCoins.toFixed(2)} грн\n\n`;
 
     return message;
 };
@@ -74,15 +126,20 @@ const formatCollectionEntry = (entry, index) => {
     const banknotes = parseFloat(entry.banknotes) || 0;
     const coins = parseFloat(entry.coins) || 0;
     
-    let message = `📅 **Collection Entry #${index + 1}**\n` +
-                  `📆 Date: ${date}\n` +
-                  `💳 Card ID: ${entry.card_id || 'N/A'}\n` +
-                  `💰 Sum: ${sum.toFixed(2)} грн\n` +
-                  `💵 Banknotes: ${banknotes.toFixed(2)} грн\n` +
-                  `🪙 Coins: ${coins.toFixed(2)} грн\n`;
+    let message = `📅 **Запис інкасації #${index + 1}**\n` +
+                  `Дата: ${date}\n` +
+                  `ID карти: ${entry.card_id || 'Н/Д'}\n` +
+                  `Сума: ${sum.toFixed(2)} грн\n` +
+                  `Купюри: ${banknotes.toFixed(2)} грн\n` +
+                  `Монети: ${coins.toFixed(2)} грн\n`;
     
     if (entry.descr) {
-        message += `📝 Description: ${entry.descr}\n`;
+        // Extract collector info from description
+        const collectorInfo = extractCollectorInfo(entry.descr);
+        if (collectorInfo.nik) {
+            message += `Інкасатор: ${collectorInfo.nik}\n`;
+        }
+        message += `Опис: ${entry.descr}\n`;
     }
     
     return message;
@@ -93,7 +150,7 @@ const sendDeviceCollectionToTelegram = async (bot, chatId, device_id, startDate,
     try {
         // Validate date format
         if (!validateDateFormat(startDate) || !validateDateFormat(endDate)) {
-            await bot.sendMessage(chatId, '❌ **Invalid date format**\n\nPlease use YYYY-MM-DD format (e.g., 2025-06-01)');
+            await bot.sendMessage(chatId, '❌ **Неправильний формат дати**\n\nВикористовуйте формат YYYY-MM-DD (наприклад, 2025-06-01)');
             return;
         }
 
@@ -101,18 +158,18 @@ const sendDeviceCollectionToTelegram = async (bot, chatId, device_id, startDate,
         const start = new Date(startDate);
         const end = new Date(endDate);
         if (start > end) {
-            await bot.sendMessage(chatId, '❌ **Invalid date range**\n\nStart date must be before end date');
+            await bot.sendMessage(chatId, '❌ **Неправильний діапазон дат**\n\nДата початку повинна бути раніше дати кінця');
             return;
         }
 
         // Send loading message
-        const loadingMsg = await bot.sendMessage(chatId, `📊 Fetching collection data for device ${device_id}...`);
+        const loadingMsg = await bot.sendMessage(chatId, `📊 Отримання даних інкасації для апарату ${device_id}...`);
 
         // Fetch collection data from API
         const collectionData = await fetchDeviceCollection(device_id, startDate, endDate);
         
         if (collectionData.error) {
-            await bot.editMessageText(`❌ **Error fetching collection data**\n\n${collectionData.error}`, {
+            await bot.editMessageText(`❌ **Помилка отримання даних інкасації**\n\n${collectionData.error}`, {
                 chat_id: chatId,
                 message_id: loadingMsg.message_id,
                 parse_mode: 'Markdown'
@@ -154,22 +211,22 @@ const sendDeviceCollectionToTelegram = async (bot, chatId, device_id, startDate,
             // Send completion message if there are more entries
             if (hasMoreEntries) {
                 const remainingCount = collectionData.data.length - MAX_ENTRIES_TO_SEND;
-                const completionMessage = `📋 **Note:** ${remainingCount} more collection entries available. Showing first ${MAX_ENTRIES_TO_SEND} to avoid spam.`;
+                const completionMessage = `📋 **Примітка:** Ще ${remainingCount} записів інкасації доступно. Показано перші ${MAX_ENTRIES_TO_SEND} щоб уникнути спаму.`;
                 await bot.sendMessage(chatId, completionMessage, { parse_mode: 'Markdown' });
             }
         }
 
         logger.info(`Collection data sent to chat ${chatId} for device ${device_id}. Found ${collectionData.data?.length || 0} entries.`);
 
-    } catch (error) {
-        logger.error(`Error sending collection data to chat ${chatId}: ${error.message}`);
-        
-        try {
-            await bot.sendMessage(chatId, '❌ Error fetching collection data. Please try again later.');
-        } catch (sendError) {
-            logger.error(`Failed to send error message to chat ${chatId}: ${sendError.message}`);
+            } catch (error) {
+            logger.error(`Error sending collection data to chat ${chatId}: ${error.message}`);
+            
+            try {
+                await bot.sendMessage(chatId, '❌ Помилка отримання даних інкасації. Спробуйте ще раз пізніше.');
+            } catch (sendError) {
+                logger.error(`Failed to send error message to chat ${chatId}: ${sendError.message}`);
+            }
         }
-    }
 };
 
 // Function to get collection data as JSON (for other uses)

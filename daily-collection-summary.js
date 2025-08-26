@@ -22,7 +22,7 @@ const generateDailySummary = async (targetDate) => {
         if (dailyCollections.length === 0) {
             return {
                 hasData: false,
-                message: `📊 **Daily Collection Summary**\n\n📅 **Date:** ${targetDate}\n\n❌ **No collection data found for this date**`
+                message: `📊 **Щоденний звіт з інкасації**\n\n📅 **Дата:** ${targetDate}\n\n❌ **Дані інкасації за цю дату не знайдено**`
             };
         }
 
@@ -60,32 +60,32 @@ const generateDailySummary = async (targetDate) => {
         });
 
         // Build the summary message
-        let summaryMessage = `📊 **Daily Collection Summary**\n\n`;
-        summaryMessage += `📅 **Date:** ${targetDate}\n`;
-        summaryMessage += `🕐 **Collection Time:** ${dailyCollections[0].date.toLocaleString('en-US', { timeZone: 'Europe/Kiev' })} - ${dailyCollections[dailyCollections.length - 1].date.toLocaleString('en-US', { timeZone: 'Europe/Kiev' })}\n\n`;
+        let summaryMessage = `📊 **Щоденний звіт з інкасації**\n\n`;
+        summaryMessage += `Дата: ${targetDate}\n`;
+        summaryMessage += `Час інкасації: ${dailyCollections[0].date.toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })} - ${dailyCollections[dailyCollections.length - 1].date.toLocaleString('uk-UA', { timeZone: 'Europe/Kiev' })}\n\n`;
 
         // Overall summary
-        summaryMessage += `💰 **Overall Summary:**\n`;
-        summaryMessage += `📦 Total Collections: ${dailyCollections.length}\n`;
-        summaryMessage += `🏪 Total Devices: ${uniqueDevices.size}\n`;
-        summaryMessage += `💵 Total Banknotes: ${totalBanknotes.toFixed(2)} грн\n`;
-        summaryMessage += `🪙 Total Coins: ${totalCoins.toFixed(2)} грн\n`;
-        summaryMessage += `💎 **Total Sum: ${totalSum.toFixed(2)} грн**\n\n`;
+        summaryMessage += `**Загальний підсумок:**\n`;
+        summaryMessage += `Всього інкасацій: ${dailyCollections.length}\n`;
+        summaryMessage += `Всього апаратів: ${uniqueDevices.size}\n`;
+        summaryMessage += `Всього купюр: ${totalBanknotes.toFixed(2)} грн\n`;
+        summaryMessage += `Всього монет: ${totalCoins.toFixed(2)} грн\n`;
+        summaryMessage += `**Загальна сума: ${totalSum.toFixed(2)} грн**\n\n`;
 
         // Collector breakdown
-        summaryMessage += `👥 **Collector Breakdown:**\n\n`;
+        summaryMessage += `**Розподіл за інкасаторами:**\n\n`;
 
         Object.entries(collectorGroups).forEach(([collector, data]) => {
             summaryMessage += `**${collector}:**\n`;
-            summaryMessage += `  📦 Collections: ${data.entries.length}\n`;
-            summaryMessage += `  🏪 Devices: ${data.devices.size} (IDs: ${Array.from(data.devices).join(', ')})\n`;
-            summaryMessage += `  💵 Banknotes: ${data.totalBanknotes.toFixed(2)} грн\n`;
-            summaryMessage += `  🪙 Coins: ${data.totalCoins.toFixed(2)} грн\n`;
-            summaryMessage += `  💎 **Total: ${data.totalSum.toFixed(2)} грн**\n\n`;
+            summaryMessage += `  Інкасацій: ${data.entries.length}\n`;
+            summaryMessage += `  Апаратів: ${data.devices.size} (ID: ${Array.from(data.devices).join(', ')})\n`;
+            summaryMessage += `  Купюри: ${data.totalBanknotes.toFixed(2)} грн\n`;
+            summaryMessage += `  Монети: ${data.totalCoins.toFixed(2)} грн\n`;
+            summaryMessage += `  **Всього: ${data.totalSum.toFixed(2)} грн**\n\n`;
         });
 
         // Device details
-        summaryMessage += `🏪 **Device Details:**\n`;
+        summaryMessage += `**Деталі по апаратах:**\n`;
         const deviceSummary = {};
         dailyCollections.forEach(entry => {
             const deviceId = entry.device_id;
@@ -104,9 +104,9 @@ const generateDailySummary = async (targetDate) => {
         });
 
         Object.entries(deviceSummary).forEach(([deviceId, data]) => {
-            summaryMessage += `  📱 **Device ${deviceId}** (${data.name}):\n`;
-            summaryMessage += `    📦 Collections: ${data.entries}\n`;
-            summaryMessage += `    💎 Total: ${data.totalSum.toFixed(2)} грн\n`;
+            summaryMessage += `  **Апарат ${deviceId}** (${data.name}):\n`;
+            summaryMessage += `    Інкасацій: ${data.entries}\n`;
+            summaryMessage += `    Всього: ${data.totalSum.toFixed(2)} грн\n`;
         });
 
         return {
@@ -135,21 +135,17 @@ const sendDailySummaryToTelegram = async (bot, chatId, targetDate) => {
         
         const summary = await generateDailySummary(targetDate);
         
+        // Always send a message, whether there's data or not
+        await bot.sendMessage(chatId, summary.message, { 
+            parse_mode: 'Markdown',
+            disable_web_page_preview: true
+        });
+        
         if (summary.hasData) {
-            await bot.sendMessage(chatId, summary.message, { 
-                parse_mode: 'Markdown',
-                disable_web_page_preview: true
-            });
-            
             logger.info(`Daily summary sent to chat ${chatId} for ${targetDate}`);
             logger.info(`Summary stats: ${summary.stats.totalCollections} collections, ${summary.stats.totalDevices} devices, ${summary.stats.totalSum.toFixed(2)} грн total`);
-            
             return summary.stats;
         } else {
-            await bot.sendMessage(chatId, summary.message, { 
-                parse_mode: 'Markdown' 
-            });
-            
             logger.info(`No data summary sent to chat ${chatId} for ${targetDate}`);
             return null;
         }
@@ -158,7 +154,7 @@ const sendDailySummaryToTelegram = async (bot, chatId, targetDate) => {
         logger.error(`Error sending daily summary to Telegram: ${error.message}`);
         
         try {
-            await bot.sendMessage(chatId, `❌ **Error generating daily summary**\n\n${error.message}`);
+            await bot.sendMessage(chatId, `❌ **Помилка генерації щоденного звіту**\n\n${error.message}`);
         } catch (sendError) {
             logger.error(`Failed to send error message to chat ${chatId}: ${sendError.message}`);
         }
@@ -171,6 +167,10 @@ const sendDailySummaryToTelegram = async (bot, chatId, targetDate) => {
 const sendDailySummaryToAllWorkers = async (bot, targetDate) => {
     try {
         logger.info(`Sending daily summary for ${targetDate} to all workers...`);
+        
+        // Ensure database connection is established
+        await sequelize.authenticate();
+        logger.info('Database connection established for summary');
         
         // Get all workers (since active field might be null, we'll include all)
         const workers = await Worker.findAll({
@@ -201,16 +201,11 @@ const sendDailySummaryToAllWorkers = async (bot, targetDate) => {
         // Send to each worker
         for (const worker of workers) {
             try {
-                if (summary.hasData) {
-                    await bot.sendMessage(worker.chat_id, summary.message, { 
-                        parse_mode: 'Markdown',
-                        disable_web_page_preview: true
-                    });
-                } else {
-                    await bot.sendMessage(worker.chat_id, summary.message, { 
-                        parse_mode: 'Markdown' 
-                    });
-                }
+                // Always send a message, whether there's data or not
+                await bot.sendMessage(worker.chat_id, summary.message, { 
+                    parse_mode: 'Markdown',
+                    disable_web_page_preview: true
+                });
                 
                 successfulSends++;
                 logger.info(`Daily summary sent to worker ${worker.name} (${worker.chat_id}) for ${targetDate}`);
@@ -252,10 +247,43 @@ const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
 };
 
+// Function to check current collection data for debugging
+const checkCurrentCollectionData = async (targetDate) => {
+    try {
+        await sequelize.authenticate();
+        
+        const collections = await Collection.findAll({
+            where: {
+                date: {
+                    [Op.between]: [
+                        new Date(`${targetDate} 00:00:00`),
+                        new Date(`${targetDate} 23:59:59`)
+                    ]
+                }
+            },
+            order: [['date', 'ASC']]
+        });
+        
+        logger.info(`Found ${collections.length} collection entries for ${targetDate}`);
+        
+        if (collections.length > 0) {
+            collections.forEach((entry, index) => {
+                logger.info(`Entry ${index + 1}: Device ${entry.device_id} (${entry.machine}) - ${entry.total_sum} грн by ${entry.collector_nik || 'Unknown'}`);
+            });
+        }
+        
+        return collections;
+    } catch (error) {
+        logger.error(`Error checking collection data: ${error.message}`);
+        return [];
+    }
+};
+
 export {
     generateDailySummary,
     sendDailySummaryToTelegram,
     sendDailySummaryToAllWorkers,
     getYesterdayDate,
-    getTodayDate
+    getTodayDate,
+    checkCurrentCollectionData
 };

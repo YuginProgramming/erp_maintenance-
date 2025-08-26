@@ -16,17 +16,40 @@ A specialized Telegram bot for managing water vending machine maintenance, monit
 
 ```
 water-vending-bot/
-├── app.js                    # Main bot application
-├── maintenance-handler.js    # Maintenance task handling logic
-├── database/                 # Database folder
-│   ├── sequelize.js          # Database configuration
-│   ├── maintenance-models.js # Database models for maintenance
-│   ├── tasks.js             # Original task models (legacy)
-│   ├── check-tasks.js       # Task checking script
-│   └── check-tasks-simple.js # Simple task checking script
+├── app.js                           # Main bot application
+├── database-completeness-checker.js # Database completeness checking
+├── daily-collection-scheduler.js    # Daily collection automation
+├── daily-collection-summary.js      # Daily summary generation
+├── handlers/                        # Application handlers
+│   ├── maintenance-handler.js       # Maintenance task handling logic
+│   └── README.md                    # Handlers documentation
+├── device/                          # Device-related handlers
+│   ├── device-handler.js            # Device list handling
+│   ├── device-collection-handler.js # Device collection handling
+│   ├── device-activation-handler.js # Device activation handling
+│   └── card-api-handler.js          # Card API handling
+├── database/                        # Database folder
+│   ├── sequelize.js                 # Database configuration
+│   ├── maintenance-models.js        # Database models for maintenance
+│   ├── workers-table.js             # Workers table management
+│   ├── tasks.js                     # Original task models (legacy)
+│   ├── check-tasks.js               # Task checking script
+│   └── check-tasks-simple.js        # Simple task checking script
+├── manual-tools/                    # Manual testing and debugging tools
+│   ├── test-completeness-checker.js # Test completeness checker
+│   ├── robust-collection-fetcher.js # Robust collection fetcher
+│   ├── check-collection-data.js     # Collection data inspection
+│   ├── fill-database-aug25.js       # Database filling tool
+│   └── README.md                    # Manual tools documentation
+├── logger/                          # Logging utilities
+├── docs/                           # Documentation and reference files
+│   ├── x_api-instructions.txt      # API documentation
+│   ├── x_collection_info.txt       # Collection data info
+│   ├── x-collection-api.json       # Sample API data
+│   └── README.md                   # Documentation guide
 ├── package.json
-├── .env                     # Environment variables (not in git)
-├── env.example              # Environment variables template
+├── .env                            # Environment variables (not in git)
+├── env.example                     # Environment variables template
 └── README.md
 ```
 

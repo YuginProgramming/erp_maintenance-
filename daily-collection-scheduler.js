@@ -60,6 +60,30 @@ const extractCollectorInfo = (descr) => {
         decodedDescr = descr;
     }
     
+    // Handle specific encoding issues
+    if (decodedDescr === 'Р†РіРѕСЂ' || decodedDescr.includes('Р†РіРѕСЂ')) {
+        return {
+            id: 'Kirk',
+            nik: 'Kirk'
+        };
+    }
+    
+    // Handle Р"РјРёС‚СЂРѕ encoding issue
+    if (decodedDescr === 'Р"РјРёС‚СЂРѕ' || decodedDescr.includes('Р"РјРёС‚СЂРѕ')) {
+        return {
+            id: 'Anna',
+            nik: 'Anna'
+        };
+    }
+    
+    // Handle Ігор - leave as is (proper Ukrainian text)
+    if (decodedDescr === 'Ігор' || decodedDescr.includes('Ігор')) {
+        return {
+            id: 'Ігор',
+            nik: 'Ігор'
+        };
+    }
+    
     // Extract collector info - format seems to be "Name - "
     const match = decodedDescr.match(/^(.+?)\s*-\s*$/);
     if (match) {
@@ -87,10 +111,17 @@ const saveCollectionData = async (collectionData, deviceInfo) => {
         let savedCount = 0;
         
         for (const entry of collectionData.data) {
-            const collectorInfo = extractCollectorInfo(entry.descr);
+            // Skip entries with zero sum (already collected)
             const sumBanknotes = parseFloat(entry.banknotes) || 0;
             const sumCoins = parseFloat(entry.coins) || 0;
             const totalSum = sumBanknotes + sumCoins;
+            
+            if (totalSum === 0) {
+                logger.info(`Skipping zero-sum entry for device ${deviceInfo.id} (already collected)`);
+                continue;
+            }
+            
+            const collectorInfo = extractCollectorInfo(entry.descr);
             
             // Parse the date and convert to Kyiv time
             const collectionDate = new Date(entry.date);
@@ -106,42 +137,32 @@ const saveCollectionData = async (collectionData, deviceInfo) => {
                 collectionDate.getSeconds()
             ));
             
-            // Check if this entry already exists to avoid duplicates
-            const existingEntry = await Collection.findOne({
-                where: {
+            try {
+                await Collection.create({
                     date: kyivLocalDate,
-                    device_id: deviceInfo.id,
                     sum_banknotes: sumBanknotes,
-                    sum_coins: sumCoins
-                }
-            });
-            
-            if (existingEntry) {
-                logger.info(`Entry already exists for device ${deviceInfo.id} at ${entry.date}`);
-                continue;
+                    sum_coins: sumCoins,
+                    total_sum: totalSum,
+                    note: entry.descr || null,
+                    machine: deviceInfo.name || `Device ${deviceInfo.id}`,
+                    collector_id: collectorInfo.id,
+                    collector_nik: collectorInfo.nik,
+                    device_id: deviceInfo.id.toString()
+                });
+                
+                savedCount++;
+                logger.info(`Saved collection entry for device ${deviceInfo.id}: ${sumBanknotes} грн banknotes, ${sumCoins} грн coins`);
+                
+            } catch (dbError) {
+                logger.error(`Error saving collection entry for device ${deviceInfo.id}: ${dbError.message}`);
             }
-            
-            // Create new collection entry
-            await Collection.create({
-                date: kyivLocalDate,
-                sum_banknotes: sumBanknotes,
-                sum_coins: sumCoins,
-                total_sum: totalSum,
-                note: entry.descr || null,
-                machine: deviceInfo.name || `Device ${deviceInfo.id}`,
-                collector_id: collectorInfo.id,
-                collector_nik: collectorInfo.nik,
-                device_id: deviceInfo.id
-            });
-            
-            savedCount++;
-            logger.info(`Saved collection entry for device ${deviceInfo.id}: ${sumBanknotes} грн banknotes, ${sumCoins} грн coins`);
         }
         
         return savedCount;
+        
     } catch (error) {
-        logger.error(`Error saving collection data for device ${deviceInfo.id}: ${error.message}`);
-        throw error;
+        logger.error(`Error processing collection data for device ${deviceInfo.id}: ${error.message}`);
+        return 0;
     }
 };
 
@@ -211,23 +232,21 @@ const fetchDailyCollectionData = async () => {
     } catch (error) {
         logger.error(`Error during daily collection data fetch: ${error.message}`);
         throw error;
-    } finally {
-        await sequelize.close();
-        logger.info('Database connection closed');
     }
+    // Remove the sequelize.close() call to keep connection alive for other operations
 };
 
-// Function to schedule the daily collection fetch at 2 PM Kyiv time
+// Function to schedule the daily collection fetch at 8 AM Kyiv time (instead of 2 PM)
 const scheduleDailyCollection = () => {
     const scheduleNextCollectionRun = () => {
         const now = new Date();
         const kyivTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Kiev" }));
         
-        // Set target time to 2 PM Kyiv time
+        // Set target time to 8 AM Kyiv time (changed from 2 PM)
         const targetTime = new Date(kyivTime);
-        targetTime.setHours(14, 0, 0, 0); // 2 PM
+        targetTime.setHours(8, 0, 0, 0); // 8 AM
         
-        // If it's already past 2 PM today, schedule for tomorrow
+        // If it's already past 8 AM today, schedule for tomorrow
         if (kyivTime >= targetTime) {
             targetTime.setDate(targetTime.getDate() + 1);
         }
