@@ -53,27 +53,55 @@ const extractCollectorInfo = (descr) => {
     };
 };
 
-// Function to fetch device collection data from API
+// Function to fetch device collection data from database
 const fetchDeviceCollection = async (device_id, startDate, endDate) => {
     try {
-        const url = 'https://soliton.net.ua/water/api/device_inkas.php';
-        const requestData = {
-            device_id: device_id.toString(),
-            ds: startDate, // Format: '2024-02-01'
-            de: endDate    // Format: '2024-02-15'
-        };
-
+        const { sequelize, ensureConnection } = await import('../database/sequelize.js');
+        const { Collection } = await import('../database/maintenance-models.js');
+        const { Op } = await import('sequelize');
+        
+        await ensureConnection();
+        
         logger.info(`Fetching collection data for device ${device_id} from ${startDate} to ${endDate}`);
         
-        const response = await axios.post(url, requestData);
-        const result = response.data;
-
-        if (result.status === 'success') {
-            return result;
-        } else {
-            logger.error(`API error for device ${device_id}: ${result.descr}`);
-            return { error: result.descr };
-        }
+        // Get device info (first record to get machine name)
+        const deviceInfo = await Collection.findOne({
+            where: { device_id: device_id },
+            attributes: ['machine'],
+            raw: true
+        });
+        
+        // Get collection data
+        const collections = await Collection.findAll({
+            where: {
+                device_id: device_id,
+                date: {
+                    [Op.between]: [startDate, endDate]
+                }
+            },
+            order: [['date', 'DESC'], ['id', 'DESC']],
+            raw: true
+        });
+        
+        // Format data to match API response structure
+        const formattedData = collections.map(collection => ({
+            id: collection.id,
+            date: collection.date,
+            sum_banknotes: collection.sum_banknotes,
+            sum_coins: collection.sum_coins,
+            total_sum: collection.total_sum,
+            note: collection.note,
+            collector_id: collection.collector_id,
+            collector_nik: collection.collector_nik
+        }));
+        
+        return {
+            status: 'success',
+            device_id: device_id,
+            address: deviceInfo?.machine || 'Не вказано',
+            data: formattedData
+        };
+        
     } catch (error) {
         logger.error(`Error fetching collection data for device ${device_id}: ${error.message}`);
         return { error: error.message };
@@ -106,9 +134,9 @@ const formatCollectionData = (collectionData) => {
     let totalCoins = 0;
 
     data.forEach(entry => {
-        totalSum += parseFloat(entry.sum) || 0;
-        totalBanknotes += parseFloat(entry.banknotes) || 0;
-        totalCoins += parseFloat(entry.coins) || 0;
+        totalSum += parseFloat(entry.total_sum) || 0;
+        totalBanknotes += parseFloat(entry.sum_banknotes) || 0;
+        totalCoins += parseFloat(entry.sum_coins) || 0;
     });
 
     message += `**Підсумок:**\n` +
@@ -122,9 +150,9 @@ const formatCollectionData = (collectionData) => {
 // Function to format individual collection entry
 const formatCollectionEntry = (entry, index) => {
     const date = new Date(entry.date).toLocaleDateString('uk-UA');
-    const sum = parseFloat(entry.sum) || 0;
-    const banknotes = parseFloat(entry.banknotes) || 0;
-    const coins = parseFloat(entry.coins) || 0;
+    const sum = parseFloat(entry.total_sum) || 0;
+    const banknotes = parseFloat(entry.sum_banknotes) || 0;
+    const coins = parseFloat(entry.sum_coins) || 0;
     
     let message = `📅 **Запис інкасації #${index + 1}**\n` +
                   `Дата: ${date}\n` +
@@ -133,13 +161,12 @@ const formatCollectionEntry = (entry, index) => {
                   `Купюри: ${banknotes.toFixed(2)} грн\n` +
                   `Монети: ${coins.toFixed(2)} грн\n`;
     
-    if (entry.descr) {
-        // Extract collector info from description
-        const collectorInfo = extractCollectorInfo(entry.descr);
-        if (collectorInfo.nik) {
-            message += `Інкасатор: ${collectorInfo.nik}\n`;
-        }
-        message += `Опис: ${entry.descr}\n`;
+    if (entry.collector_nik) {
+        message += `Інкасатор: ${entry.collector_nik}\n`;
+    }
+    
+    if (entry.note) {
+        message += `Опис: ${entry.note}\n`;
     }
     
     return message;
