@@ -1,29 +1,26 @@
-import { sequelize, ensureConnection } from "../database/sequelize.js";
-import { Collection } from "../database/maintenance-models.js";
+import { connectionManager, databaseService } from "../database/index.js";
+import { CollectionRepository } from "../database/repositories/index.js";
 import { logger } from "../logger/index.js";
-import { Op } from "sequelize";
 
 // Function to generate daily collection summary
 export const generateDailySummary = async (targetDate) => {
     try {
-        // Ensure database connection is active
-        const isConnected = await ensureConnection();
-        if (!isConnected) {
-            throw new Error('Database connection failed');
+        // Initialize connection manager if not already initialized
+        if (!connectionManager.initialized) {
+            await connectionManager.initialize();
+        }
+        
+        // Check database health
+        const isHealthy = await databaseService.healthCheck();
+        if (!isHealthy) {
+            throw new Error('Database connection is not healthy');
         }
 
+        // Create collection repository
+        const collectionRepo = new CollectionRepository();
+
         // Get all collection entries for the specified date
-        const dailyCollections = await Collection.findAll({
-            where: {
-                date: {
-                    [Op.between]: [
-                        new Date(`${targetDate} 00:00:00`),
-                        new Date(`${targetDate} 23:59:59`)
-                    ]
-                }
-            },
-            order: [['date', 'ASC']]
-        });
+        const dailyCollections = await collectionRepo.getCollectionDataByDateRange(targetDate, targetDate);
 
         if (dailyCollections.length === 0) {
             return {

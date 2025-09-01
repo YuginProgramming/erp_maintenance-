@@ -1,4 +1,4 @@
-import { Collection } from "../database/maintenance-models.js";
+import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
 
 // Function to extract collector information from description

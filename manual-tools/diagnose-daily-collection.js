@@ -1,5 +1,5 @@
-import { sequelize } from "../database/sequelize.js";
-import { Collection } from "../database/maintenance-models.js";
+import { connectionManager } from "../database/connection-manager.js";
+import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
 import { Op } from "sequelize";
 import axios from "axios";
@@ -42,7 +42,7 @@ const checkDailyCollectionAttempts = async () => {
     } catch (error) {
         console.error('❌ Error:', error.message);
     } finally {
-        await sequelize.close();
+        await connectionManager.shutdown();
     }
 };
 

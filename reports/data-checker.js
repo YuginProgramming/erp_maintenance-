@@ -1,27 +1,20 @@
-import { sequelize, ensureConnection } from "../database/sequelize.js";
-import { Collection } from "../database/maintenance-models.js";
+import { connectionManager } from "../database/connection-manager.js";
+import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
-import { Op } from "sequelize";
 
 // Function to check current collection data for debugging
 export const checkCurrentCollectionData = async (targetDate) => {
     try {
-        const isConnected = await ensureConnection();
+        await connectionManager.initialize();
+        const isConnected = true;
         if (!isConnected) {
             throw new Error('Database connection failed');
         }
         
-        const collections = await Collection.findAll({
-            where: {
-                date: {
-                    [Op.between]: [
-                        new Date(`${targetDate} 00:00:00`),
-                        new Date(`${targetDate} 23:59:59`)
-                    ]
-                }
-            },
-            order: [['date', 'ASC']]
-        });
+        const collectionRepo = new CollectionRepository();
+        const startDate = new Date(`${targetDate} 00:00:00`);
+        const endDate = new Date(`${targetDate} 23:59:59`);
+        const collections = await collectionRepo.getCollectionDataByDateRange(startDate, endDate);
         
         logger.info(`Found ${collections.length} collection entries for ${targetDate}`);
         

@@ -6,11 +6,11 @@ export const handleDataAvailabilityCommand = (bot) => {
         await bot.sendMessage(chatId, '🔍 Перевірка наявності даних інкасації...');
         
         try {
-            const { sequelize, ensureConnection } = await import('../database/sequelize.js');
-            const { Collection } = await import('../database/maintenance-models.js');
+            const { connectionManager } = await import('../database/connection-manager.js');
+            const { CollectionRepository } = await import('../database/repositories/collection-repository.js');
             const { Op } = await import('sequelize');
             
-            await ensureConnection();
+            await connectionManager.initialize();
             
             // Get the last 60 days of data availability
             const sixtyDaysAgo = new Date();
@@ -59,11 +59,11 @@ export const handleDevicesListCommand = (bot) => {
         await bot.sendMessage(chatId, '📱 Отримання списку всіх апаратів...');
         
         try {
-            const { sequelize, ensureConnection } = await import('../database/sequelize.js');
-            const { Collection } = await import('../database/maintenance-models.js');
+            const { connectionManager } = await import('../database/connection-manager.js');
+            const { CollectionRepository } = await import('../database/repositories/collection-repository.js');
             const { Op } = await import('sequelize');
             
-            await ensureConnection();
+            await connectionManager.initialize();
             
             const devices = await Collection.findAll({
                 attributes: [

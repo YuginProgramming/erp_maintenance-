@@ -1,5 +1,5 @@
-import { sequelize } from "../database/sequelize.js";
-import { Collection } from "../database/maintenance-models.js";
+import { connectionManager } from "../database/connection-manager.js";
+import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
 import axios from "axios";
 
@@ -241,7 +241,7 @@ const fillDatabaseForAug25 = async () => {
     } catch (error) {
         console.error(`❌ Error: ${error.message}`);
     } finally {
-        await sequelize.close();
+        await connectionManager.shutdown();
         console.log('\n🔌 Database connection closed');
     }
 };

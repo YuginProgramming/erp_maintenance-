@@ -56,32 +56,23 @@ const extractCollectorInfo = (descr) => {
 // Function to fetch device collection data from database
 const fetchDeviceCollection = async (device_id, startDate, endDate) => {
     try {
-        const { sequelize, ensureConnection } = await import('../database/sequelize.js');
-        const { Collection } = await import('../database/maintenance-models.js');
-        const { Op } = await import('sequelize');
+        const { connectionManager } = await import('../database/connection-manager.js');
+        const { CollectionRepository } = await import('../database/repositories/collection-repository.js');
         
-        await ensureConnection();
+        await connectionManager.initialize();
         
         logger.info(`Fetching collection data for device ${device_id} from ${startDate} to ${endDate}`);
         
         // Get device info (first record to get machine name)
-        const deviceInfo = await Collection.findOne({
+        const collectionRepo = new CollectionRepository();
+        const deviceInfo = await collectionRepo.findOne({
             where: { device_id: device_id },
             attributes: ['machine'],
             raw: true
         });
         
         // Get collection data
-        const collections = await Collection.findAll({
-            where: {
-                device_id: device_id,
-                date: {
-                    [Op.between]: [startDate, endDate]
-                }
-            },
-            order: [['date', 'DESC'], ['id', 'DESC']],
-            raw: true
-        });
+        const collections = await collectionRepo.getCollectionDataByDevice(device_id, startDate, endDate);
         
         // Format data to match API response structure
         const formattedData = collections.map(collection => ({

@@ -1,5 +1,5 @@
-import { sequelize } from "./database/sequelize.js";
-import { Collection } from "./database/maintenance-models.js";
+import { connectionManager, databaseService } from "./database/index.js";
+import { CollectionRepository } from "./database/repositories/index.js";
 import { logger } from "./logger/index.js";
 import axios from "axios";
 
@@ -101,7 +101,7 @@ const fetchDeviceCollectionWithRetry = async (deviceId, targetDate, retryCount =
 };
 
 // Function to save collection data to database
-const saveCollectionData = async (collectionData, deviceInfo, targetDate) => {
+const saveCollectionData = async (collectionData, deviceInfo, targetDate, collectionRepo) => {
     try {
         if (!collectionData.data || collectionData.data.length === 0) {
             return 0;
@@ -137,30 +137,30 @@ const saveCollectionData = async (collectionData, deviceInfo, targetDate) => {
             
             try {
                 // Check for existing entry
-                const existingEntry = await Collection.findOne({
-                    where: {
-                        date: kyivLocalDate,
-                        device_id: deviceInfo.id.toString(),
-                        sum_banknotes: sumBanknotes,
-                        sum_coins: sumCoins
-                    }
+                const existingEntry = await collectionRepo.findOne({
+                    date: kyivLocalDate.toISOString().split('T')[0],
+                    device_id: deviceInfo.id.toString(),
+                    sum_banknotes: sumBanknotes,
+                    sum_coins: sumCoins
                 });
                 
                 if (existingEntry) {
                     continue; // Skip if already exists
                 }
                 
-                await Collection.create({
-                    date: kyivLocalDate,
-                    sum_banknotes: sumBanknotes,
-                    sum_coins: sumCoins,
-                    total_sum: totalSum,
-                    note: entry.descr || null,
+                // Prepare data for saving
+                const dataToSave = {
+                    device_id: deviceInfo.id.toString(),
+                    date: kyivLocalDate.toISOString().split('T')[0],
+                    banknotes: sumBanknotes,
+                    coins: sumCoins,
                     machine: deviceInfo.name || `Device ${deviceInfo.id}`,
                     collector_id: collectorInfo.id,
                     collector_nik: collectorInfo.nik,
-                    device_id: deviceInfo.id.toString()
-                });
+                    description: entry.descr || null
+                };
+                
+                await collectionRepo.saveCollectionData(dataToSave);
                 
                 savedCount++;
                 
@@ -178,17 +178,10 @@ const saveCollectionData = async (collectionData, deviceInfo, targetDate) => {
 };
 
 // Function to check if date has collection data
-const checkDateHasData = async (targetDate) => {
+const checkDateHasData = async (targetDate, collectionRepo) => {
     try {
-        const count = await Collection.count({
-            where: {
-                date: {
-                    [require('sequelize').Op.between]: [
-                        new Date(`${targetDate} 00:00:00`),
-                        new Date(`${targetDate} 23:59:59`)
-                    ]
-                }
-            }
+        const count = await collectionRepo.count({
+            date: targetDate
         });
         
         return count > 0;
@@ -213,11 +206,11 @@ const getDatesToCheck = () => {
 };
 
 // Function to process a single date
-const processDate = async (targetDate, devices) => {
+const processDate = async (targetDate, devices, collectionRepo) => {
     logger.info(`🔍 Processing date: ${targetDate}`);
     
     // Check if date already has data
-    const hasData = await checkDateHasData(targetDate);
+    const hasData = await checkDateHasData(targetDate, collectionRepo);
     if (hasData) {
         logger.info(`✅ Date ${targetDate} already has collection data, skipping`);
         return { date: targetDate, status: 'skipped', reason: 'has_data' };
@@ -242,7 +235,7 @@ const processDate = async (targetDate, devices) => {
                     return;
                 }
                 
-                const savedCount = await saveCollectionData(collectionData, device, targetDate);
+                const savedCount = await saveCollectionData(collectionData, device, targetDate, collectionRepo);
                 totalSaved += savedCount;
                 processedDevices++;
                 
@@ -282,13 +275,21 @@ const checkAndFillMissingData = async () => {
     logger.info('🔄 Starting database completeness check...');
     
     try {
-        // Connect to database
-        await sequelize.authenticate();
-        logger.info('✅ Database connection established');
+        // Initialize connection manager if not already initialized
+        if (!connectionManager.initialized) {
+            await connectionManager.initialize();
+        }
         
-        // Sync the Collection model
-        await Collection.sync({ force: false });
-        logger.info('✅ Collection table synchronized');
+        // Check database health
+        const isHealthy = await databaseService.healthCheck();
+        if (!isHealthy) {
+            throw new Error('Database connection is not healthy');
+        }
+        logger.info('Database connection established and healthy for completeness check');
+        
+        // Create collection repository
+        const collectionRepo = new CollectionRepository();
+        logger.info('✅ Collection repository initialized');
         
         // Get all devices
         logger.info('📱 Fetching all devices...');
@@ -314,7 +315,7 @@ const checkAndFillMissingData = async () => {
         
         // Process each date
         for (const targetDate of datesToCheck) {
-            const result = await processDate(targetDate, devices);
+            const result = await processDate(targetDate, devices, collectionRepo);
             results.push(result);
             
             if (result.status === 'completed') {
@@ -367,8 +368,8 @@ const checkAndFillMissingData = async () => {
             error: error.message
         };
     } finally {
-        await sequelize.close();
-        logger.info('🔌 Database connection closed');
+        // Note: Connection manager handles connection lifecycle automatically
+        logger.info('🔌 Database completeness check completed');
     }
 };
 

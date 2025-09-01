@@ -1,7 +1,6 @@
-import { sequelize, ensureConnection } from "../database/sequelize.js";
-import { Worker } from "../database/maintenance-models.js";
+import { connectionManager, databaseService } from "../database/index.js";
+import { WorkerRepository } from "../database/repositories/index.js";
 import { logger } from "../logger/index.js";
-import { Op } from "sequelize";
 import { generateDailySummary } from "./daily-summary.js";
 import { sendChunkedMessage } from "./message-utils.js";
 
@@ -10,21 +9,28 @@ export const sendDailySummaryToAllWorkers = async (bot, targetDate) => {
     try {
         logger.info(`Sending daily summary for ${targetDate} to all workers...`);
         
-        // Ensure database connection is established
-        const isConnected = await ensureConnection();
-        if (!isConnected) {
-            throw new Error('Database connection failed');
+        // Initialize connection manager if not already initialized
+        if (!connectionManager.initialized) {
+            await connectionManager.initialize();
         }
-        logger.info('Database connection established for summary');
         
-        // Get all workers (since active field might be null, we'll include all)
-        const workers = await Worker.findAll({
-            where: {
-                chat_id: {
-                    [Op.not]: null
-                }
-            }
-        });
+        // Check database health
+        const isHealthy = await databaseService.healthCheck();
+        if (!isHealthy) {
+            throw new Error('Database connection is not healthy');
+        }
+        logger.info('Database connection established and healthy for summary');
+        
+        // Create worker repository
+        const workerRepo = new WorkerRepository();
+        
+        // Get all workers with valid chat IDs
+        const workers = await workerRepo.executeCustomQuery(`
+            SELECT * FROM workers 
+            WHERE chat_id IS NOT NULL 
+            AND active = true
+            ORDER BY name ASC
+        `);
         
         if (workers.length === 0) {
             logger.warn('No active workers found in database');

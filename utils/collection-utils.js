@@ -3,22 +3,14 @@ import { logger } from '../logger/index.js';
 // Function to send collection summary for all devices
 export const sendAllDevicesCollectionSummary = async (bot, chatId, startDate, endDate, period) => {
     try {
-        const { sequelize, ensureConnection } = await import('../database/sequelize.js');
-        const { Collection } = await import('../database/maintenance-models.js');
-        const { Op } = await import('sequelize');
+        const { connectionManager } = await import('../database/connection-manager.js');
+        const { CollectionRepository } = await import('../database/repositories/collection-repository.js');
         
-        await ensureConnection();
+        await connectionManager.initialize();
         
         // Get all collections for the period
-        const collections = await Collection.findAll({
-            where: {
-                date: {
-                    [Op.between]: [startDate, endDate]
-                }
-            },
-            order: [['date', 'DESC'], ['device_id', 'ASC']],
-            raw: true
-        });
+        const collectionRepo = new CollectionRepository();
+        const collections = await collectionRepo.getCollectionDataByDateRange(startDate, endDate);
         
         if (collections.length === 0) {
             await bot.sendMessage(chatId, `📊 **Звіт інкасації за ${period === 'day' ? 'сьогодні' : period === 'week' ? 'останні 7 днів' : 'останні 30 днів'}**\n\n❌ Дані інкасації за вказаний період не знайдено`);

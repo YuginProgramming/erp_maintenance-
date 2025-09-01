@@ -1,7 +1,6 @@
-import { sequelize, ensureConnection } from "../database/sequelize.js";
-import { Collection } from "../database/maintenance-models.js";
+import { connectionManager, databaseService } from "../database/index.js";
+import { CollectionRepository } from "../database/repositories/index.js";
 import { logger } from "../logger/index.js";
-import { Op } from "sequelize";
 
 // Function to generate monthly collection summary
 export const generateMonthlySummary = async (year, month) => {
