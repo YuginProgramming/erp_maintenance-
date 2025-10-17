@@ -6,7 +6,6 @@ A specialized Telegram bot for managing water vending machine maintenance, monit
 
 - 🔧 **Maintenance Task Management** - Track and manage maintenance tasks
 - 🖥️ **Machine Status Monitoring** - Real-time machine status and water levels
-- 🚨 **Alert System** - Urgent maintenance alerts and notifications
 - 💧 **Water Quality Tracking** - Monitor water quality tests and results
 - 👨‍🔧 **Technician Management** - Assign and track technician work
 - 📊 **Performance Analytics** - Sales data and maintenance history
@@ -20,9 +19,6 @@ water-vending-bot/
 ├── database-completeness-checker.js # Database completeness checking
 ├── daily-collection-scheduler.js    # Daily collection automation
 ├── daily-collection-summary.js      # Daily summary generation
-├── handlers/                        # Application handlers
-│   ├── maintenance-handler.js       # Maintenance task handling logic
-│   └── README.md                    # Handlers documentation
 ├── device/                          # Device-related handlers
 │   ├── device-handler.js            # Device list handling
 │   ├── device-collection-handler.js # Device collection handling
@@ -100,7 +96,6 @@ water-vending-bot/
 
 - `/maintenance` - View all maintenance tasks
 - `/machines` - Check machine status and water levels
-- `/alerts` - Show urgent maintenance alerts
 - `/help` - Show help information
 
 ## 🗄️ Database Schema
@@ -129,7 +124,6 @@ water-vending-bot/
 - `monthly_sales` - Liters sold this month
 - `last_maintenance` - Last maintenance date
 - `next_maintenance` - Next scheduled maintenance
-- `alerts` - Current alerts
 - `filter_life_remaining` - Days until filter replacement
 - `water_quality_status` - Current water quality rating
 

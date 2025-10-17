@@ -1,5 +1,6 @@
 import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
+import { cleanNumericString, sanitizeCollectionEntry, logSanitizationIssue } from "../utils/data-sanitizer.js";
 
 // Function to extract collector information from description
 export const extractCollectorInfo = (descr) => {
@@ -64,9 +65,20 @@ export const saveCollectionData = async (collectionData, deviceInfo) => {
         let savedCount = 0;
         
         for (const entry of collectionData.data) {
+            // Sanitize the entry data to handle malformed numeric values
+            const sanitizedEntry = sanitizeCollectionEntry(entry);
+            
+            // Log any sanitization issues for monitoring
+            if (entry.banknotes !== sanitizedEntry.banknotes.toString()) {
+                logSanitizationIssue(entry.banknotes, sanitizedEntry.banknotes, `Device ${deviceInfo.id} banknotes`);
+            }
+            if (entry.coins !== sanitizedEntry.coins.toString()) {
+                logSanitizationIssue(entry.coins, sanitizedEntry.coins, `Device ${deviceInfo.id} coins`);
+            }
+            
             // Skip entries with zero sum (already collected)
-            const sumBanknotes = parseFloat(entry.banknotes) || 0;
-            const sumCoins = parseFloat(entry.coins) || 0;
+            const sumBanknotes = sanitizedEntry.banknotes;
+            const sumCoins = sanitizedEntry.coins;
             const totalSum = sumBanknotes + sumCoins;
             
             if (totalSum === 0) {

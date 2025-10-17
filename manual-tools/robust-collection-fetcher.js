@@ -1,6 +1,7 @@
 import { connectionManager } from "../database/connection-manager.js";
 import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
+import { cleanNumericString, sanitizeCollectionEntry, logSanitizationIssue } from "../utils/data-sanitizer.js";
 import axios from "axios";
 import fs from 'fs';
 import path from 'path';
@@ -213,8 +214,19 @@ class RobustCollectionFetcher {
             let savedCount = 0;
             
             for (const entry of collectionData.data) {
-                const sumBanknotes = parseFloat(entry.banknotes) || 0;
-                const sumCoins = parseFloat(entry.coins) || 0;
+                // Sanitize the entry data to handle malformed numeric values
+                const sanitizedEntry = sanitizeCollectionEntry(entry);
+                
+                // Log any sanitization issues for monitoring
+                if (entry.banknotes !== sanitizedEntry.banknotes.toString()) {
+                    logSanitizationIssue(entry.banknotes, sanitizedEntry.banknotes, `Device ${deviceInfo.id} banknotes`);
+                }
+                if (entry.coins !== sanitizedEntry.coins.toString()) {
+                    logSanitizationIssue(entry.coins, sanitizedEntry.coins, `Device ${deviceInfo.id} coins`);
+                }
+                
+                const sumBanknotes = sanitizedEntry.banknotes;
+                const sumCoins = sanitizedEntry.coins;
                 const totalSum = sumBanknotes + sumCoins;
                 
                 // Skip zero-sum entries

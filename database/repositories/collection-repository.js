@@ -1,5 +1,6 @@
 import { BaseRepository } from './base-repository.js';
 import { logger } from '../../logger/index.js';
+import { cleanNumericString } from '../../utils/data-sanitizer.js';
 
 /**
  * Collection Repository
@@ -18,13 +19,17 @@ export class CollectionRepository extends BaseRepository {
             // Validate required fields
             this.validateData(collectionData, ['device_id', 'date']);
             
-            // Sanitize data to match actual database schema
+            // Sanitize data to match actual database schema and clean malformed numeric values
+            const sanitizedBanknotes = cleanNumericString(collectionData.banknotes);
+            const sanitizedCoins = cleanNumericString(collectionData.coins);
+            const sanitizedTotal = cleanNumericString(collectionData.total_sum);
+            
             const data = this.sanitizeData({
                 device_id: collectionData.device_id,
                 date: collectionData.date,
-                sum_banknotes: collectionData.banknotes || 0,
-                sum_coins: collectionData.coins || 0,
-                total_sum: (collectionData.banknotes || 0) + (collectionData.coins || 0),
+                sum_banknotes: sanitizedBanknotes,
+                sum_coins: sanitizedCoins,
+                total_sum: sanitizedTotal || (sanitizedBanknotes + sanitizedCoins),
                 note: collectionData.description || null,
                 machine: collectionData.machine || `Device ${collectionData.device_id}`,
                 collector_id: collectionData.collector_id || null,
