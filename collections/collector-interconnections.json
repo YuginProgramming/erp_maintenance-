@@ -1,0 +1,151 @@
+{
+  "generated_at": "2025-11-20T13:13:59.447Z",
+  "total_collectors": 8,
+  "total_variants": 9,
+  "note_variants_summary": {
+    "total_distinct_notes": 7,
+    "null_note_occurrences": 407,
+    "variants": [
+      {
+        "note": "-",
+        "occurrences": 78
+      },
+      {
+        "note": "Ігор -",
+        "occurrences": 2
+      },
+      {
+        "note": "Р†РіРѕСЂ  -",
+        "occurrences": 551
+      },
+      {
+        "note": "Р†РіРѕСЂ -",
+        "occurrences": 4
+      },
+      {
+        "note": "Р”РјРёС‚СЂРѕ  -",
+        "occurrences": 348
+      },
+      {
+        "note": "Р СѓСЃР»Р°РЅ  -",
+        "occurrences": 462
+      },
+      {
+        "note": null,
+        "occurrences": 407
+      }
+    ]
+  },
+  "collectors": [
+    {
+      "collector_id": null,
+      "collector_nik": "",
+      "total_records": 18,
+      "note_variants": [
+        {
+          "note": "  - ",
+          "occurrences": 18,
+          "first_seen": "2025-07-28T15:40:49.000Z",
+          "last_seen": "2025-08-30T14:08:39.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": null,
+      "total_records": 60,
+      "note_variants": [
+        {
+          "note": "  - ",
+          "occurrences": 60,
+          "first_seen": "2025-08-14T00:00:00.000Z",
+          "last_seen": "2025-11-06T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": "c",
+      "total_records": 1,
+      "note_variants": [
+        {
+          "note": "Р”РјРёС‚СЂРѕ  - ",
+          "occurrences": 1,
+          "first_seen": "2025-08-25T12:30:01.000Z",
+          "last_seen": "2025-08-25T12:30:01.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": "Kirk",
+      "collector_nik": "Kirk",
+      "total_records": 531,
+      "note_variants": [
+        {
+          "note": " Р†РіРѕСЂ - ",
+          "occurrences": 4,
+          "first_seen": "2025-10-24T00:00:00.000Z",
+          "last_seen": "2025-10-24T00:00:00.000Z"
+        },
+        {
+          "note": "Р†РіРѕСЂ  - ",
+          "occurrences": 527,
+          "first_seen": "2025-07-28T15:16:26.000Z",
+          "last_seen": "2025-11-17T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": "Ігор",
+      "total_records": 2,
+      "note_variants": [
+        {
+          "note": "Ігор -",
+          "occurrences": 2,
+          "first_seen": "2025-08-20T11:39:49.000Z",
+          "last_seen": "2025-08-20T11:40:07.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": "Р СѓСЃР»Р°РЅ",
+      "total_records": 462,
+      "note_variants": [
+        {
+          "note": "Р СѓСЃР»Р°РЅ  - ",
+          "occurrences": 462,
+          "first_seen": "2025-07-28T09:15:21.000Z",
+          "last_seen": "2025-11-01T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": "Р”РјРёС‚СЂРѕ",
+      "total_records": 347,
+      "note_variants": [
+        {
+          "note": "Р”РјРёС‚СЂРѕ  - ",
+          "occurrences": 347,
+          "first_seen": "2025-07-28T05:40:08.000Z",
+          "last_seen": "2025-11-12T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "collector_id": null,
+      "collector_nik": "Р†РіРѕСЂ",
+      "total_records": 24,
+      "note_variants": [
+        {
+          "note": "Р†РіРѕСЂ  - ",
+          "occurrences": 24,
+          "first_seen": "2025-08-19T17:49:34.000Z",
+          "last_seen": "2025-08-26T13:58:00.000Z"
+        }
+      ]
+    }
+  ]
+}
