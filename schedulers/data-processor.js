@@ -1,6 +1,6 @@
 import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
-import { cleanNumericString, sanitizeCollectionEntry, logSanitizationIssue } from "../utils/data-sanitizer.js";
+import { saveMergedCollectionVisits } from "../utils/collection-visit-merge.js";
 
 // Function to extract collector information from description
 export const extractCollectorInfo = (descr) => {
@@ -62,69 +62,17 @@ export const saveCollectionData = async (collectionData, deviceInfo) => {
             return 0;
         }
 
-        let savedCount = 0;
-        
-        for (const entry of collectionData.data) {
-            // Sanitize the entry data to handle malformed numeric values
-            const sanitizedEntry = sanitizeCollectionEntry(entry);
-            
-            // Log any sanitization issues for monitoring
-            if (entry.banknotes !== sanitizedEntry.banknotes.toString()) {
-                logSanitizationIssue(entry.banknotes, sanitizedEntry.banknotes, `Device ${deviceInfo.id} banknotes`);
-            }
-            if (entry.coins !== sanitizedEntry.coins.toString()) {
-                logSanitizationIssue(entry.coins, sanitizedEntry.coins, `Device ${deviceInfo.id} coins`);
-            }
-            
-            // Skip entries with zero sum (already collected)
-            const sumBanknotes = sanitizedEntry.banknotes;
-            const sumCoins = sanitizedEntry.coins;
-            const totalSum = sumBanknotes + sumCoins;
-            
-            if (totalSum === 0) {
-                logger.info(`Skipping zero-sum entry for device ${deviceInfo.id} (already collected)`);
-                continue;
-            }
-            
-            const collectorInfo = extractCollectorInfo(entry.descr);
-            
-            // Parse the date and convert to Kyiv time
-            const collectionDate = new Date(entry.date);
-            const kyivHour = collectionDate.getHours();
-            const utcHour = kyivHour - 3; // Convert Kyiv time to UTC
-            
-            const kyivLocalDate = new Date(Date.UTC(
-                collectionDate.getFullYear(),
-                collectionDate.getMonth(),
-                collectionDate.getDate(),
-                utcHour,
-                collectionDate.getMinutes(),
-                collectionDate.getSeconds()
-            ));
-            
-            try {
-                await Collection.create({
-                    date: kyivLocalDate,
-                    sum_banknotes: sumBanknotes,
-                    sum_coins: sumCoins,
-                    total_sum: totalSum,
-                    note: entry.descr || null,
-                    machine: deviceInfo.name || `Device ${deviceInfo.id}`,
-                    collector_id: collectorInfo.id,
-                    collector_nik: collectorInfo.nik,
-                    device_id: deviceInfo.id.toString()
-                });
-                
-                savedCount++;
-                logger.info(`Saved collection entry for device ${deviceInfo.id}: ${sumBanknotes} грн banknotes, ${sumCoins} грн coins`);
-                
-            } catch (dbError) {
-                logger.error(`Error saving collection entry for device ${deviceInfo.id}: ${dbError.message}`);
-            }
+        const collectionRepo = new CollectionRepository();
+        const savedCount = await saveMergedCollectionVisits({
+            collectionData,
+            device: deviceInfo,
+            collectionRepo,
+            extractCollector: extractCollectorInfo,
+        });
+        if (savedCount > 0) {
+            logger.info(`Saved ${savedCount} collection visit(s) for device ${deviceInfo.id}`);
         }
-        
         return savedCount;
-        
     } catch (error) {
         logger.error(`Error processing collection data for device ${deviceInfo.id}: ${error.message}`);
         return 0;

@@ -83,6 +83,9 @@ describe('Collection Repository', () => {
             // This test would require a test database
             // For now, we'll test the method signature
             expect(typeof collectionRepository.checkDataExists).toBe('function');
+            expect(typeof collectionRepository.hasCollectionOnKyivDate).toBe('function');
+            expect(typeof collectionRepository.findVisitNear).toBe('function');
+            expect(typeof collectionRepository.upsertVisit).toBe('function');
         });
 
         it('should get collection data by date range', async () => {

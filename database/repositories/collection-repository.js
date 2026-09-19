@@ -1,6 +1,14 @@
 import { BaseRepository } from './base-repository.js';
 import { logger } from '../../logger/index.js';
 import { cleanNumericString } from '../../utils/data-sanitizer.js';
+import {
+    amountsCompatible,
+    isDateStub,
+    mergeVisitAmounts,
+    parseSolitonDate,
+    pickVisitDate,
+    VISIT_MERGE_WINDOW_MS,
+} from '../../utils/collection-visit-merge.js';
 
 /**
  * Collection Repository
@@ -135,21 +143,36 @@ export class CollectionRepository extends BaseRepository {
     }
 
     /**
-     * Check if collection data exists for a device on a specific date
+     * Check if any collection exists on this Kyiv calendar day.
+     */
+    async hasCollectionOnKyivDate(kyivDate) {
+        try {
+            const query = `
+                SELECT COUNT(*) as count
+                FROM ${this.tableName}
+                WHERE (date AT TIME ZONE 'Europe/Kyiv')::date = :kyivDate::date
+            `;
+            const result = await this.db.executeQueryOne(query, { kyivDate });
+            return Boolean(result && Number(result.count) > 0);
+        } catch (error) {
+            logger.error('Failed to check Kyiv-day collection data:', {
+                kyivDate,
+                error: error.message,
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * @deprecated Use findVisitNear / upsertVisit. Calendar-day match blocks a second visit.
      */
     async checkDataExists(deviceId, date) {
         try {
-            const query = `
-                SELECT COUNT(*) as count 
-                FROM ${this.tableName} 
-                WHERE device_id = :deviceId AND DATE(date) = :date
-            `;
-            
-            const result = await this.db.executeQueryOne(query, { deviceId, date });
-            const exists = result && result.count > 0;
-            
-            logger.debug(`Collection data exists for device ${deviceId} on ${date}: ${exists}`);
-            return exists;
+            return this.hasCollectionOnKyivDate(
+                typeof date === 'string' && date.length === 10
+                    ? date
+                    : (parseSolitonDate(date) || new Date(date)).toISOString().slice(0, 10)
+            );
         } catch (error) {
             logger.error('Failed to check if collection data exists:', { 
                 deviceId, 
@@ -158,6 +181,111 @@ export class CollectionRepository extends BaseRepository {
             });
             throw error;
         }
+    }
+
+    async findVisitNear(deviceId, date, windowMs = VISIT_MERGE_WINDOW_MS) {
+        const visitAt = parseSolitonDate(date);
+        if (!visitAt) return null;
+        const windowSeconds = Math.max(1, Math.round(windowMs / 1000));
+        const query = `
+            SELECT * FROM ${this.tableName}
+            WHERE device_id = :deviceId
+              AND ABS(EXTRACT(EPOCH FROM (date - :visitAt::timestamptz))) <= :windowSeconds
+            ORDER BY date ASC, id ASC
+            LIMIT 1
+        `;
+        return this.db.executeQueryOne(query, {
+            deviceId: Number(deviceId),
+            visitAt: visitAt.toISOString(),
+            windowSeconds,
+        });
+    }
+
+    async findSameDayStub(deviceId, date) {
+        const visitAt = parseSolitonDate(date);
+        if (!visitAt) return null;
+        const query = `
+            SELECT * FROM ${this.tableName}
+            WHERE device_id = :deviceId
+              AND (date AT TIME ZONE 'Europe/Kyiv')::date
+                  = (:visitAt::timestamptz AT TIME ZONE 'Europe/Kyiv')::date
+              AND (
+                (date AT TIME ZONE 'Europe/Kyiv')::time = time '03:00:00'
+                OR (date AT TIME ZONE 'Europe/Kyiv')::time = time '00:00:00'
+              )
+            ORDER BY id ASC
+            LIMIT 1
+        `;
+        return this.db.executeQueryOne(query, {
+            deviceId: Number(deviceId),
+            visitAt: visitAt.toISOString(),
+        });
+    }
+
+    rowAmounts(row) {
+        return {
+            banknotes: cleanNumericString(row?.sum_banknotes),
+            coins: cleanNumericString(row?.sum_coins),
+        };
+    }
+
+    /**
+     * Insert one visit, or fill coins/notes on a nearby / same-day stub row.
+     */
+    async upsertVisit(collectionData) {
+        this.validateData(collectionData, ['device_id', 'date']);
+        const visitAt = parseSolitonDate(collectionData.date);
+        if (!visitAt) {
+            throw new Error('Invalid collection date');
+        }
+
+        const incoming = {
+            banknotes: cleanNumericString(collectionData.banknotes),
+            coins: cleanNumericString(collectionData.coins),
+        };
+        const deviceId = Number(collectionData.device_id);
+
+        const near = await this.findVisitNear(deviceId, visitAt);
+        let existing = near;
+        if (!existing) {
+            const stub = await this.findSameDayStub(deviceId, visitAt);
+            if (stub && amountsCompatible(this.rowAmounts(stub), incoming)) {
+                existing = stub;
+            }
+        }
+
+        if (existing) {
+            const merged = mergeVisitAmounts(this.rowAmounts(existing), incoming);
+            const nextDate = pickVisitDate(existing.date, visitAt);
+            const unchanged =
+                cleanNumericString(existing.sum_banknotes) === merged.banknotes &&
+                cleanNumericString(existing.sum_coins) === merged.coins &&
+                new Date(existing.date).getTime() === nextDate.getTime() &&
+                !isDateStub(existing.date);
+            if (unchanged) {
+                return { created: false, updated: false, row: existing };
+            }
+
+            const row = await this.update(existing.id, {
+                date: nextDate,
+                sum_banknotes: merged.banknotes,
+                sum_coins: merged.coins,
+                total_sum: merged.banknotes + merged.coins,
+                updated_at: new Date(),
+            });
+            logger.debug(`Updated collection visit ${existing.id} for device ${deviceId}`);
+            return { created: false, updated: true, row };
+        }
+
+        const row = await this.saveCollectionData({
+            ...collectionData,
+            device_id: deviceId,
+            date: visitAt.toISOString(),
+            banknotes: incoming.banknotes,
+            coins: incoming.coins,
+            total_sum: incoming.banknotes + incoming.coins,
+        });
+        return { created: true, updated: false, row };
     }
 
     /**

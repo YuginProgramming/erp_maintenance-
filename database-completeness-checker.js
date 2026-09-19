@@ -1,6 +1,8 @@
 import { connectionManager, databaseService } from "./database/index.js";
 import { CollectionRepository } from "./database/repositories/index.js";
 import { logger } from "./logger/index.js";
+import { saveMergedCollectionVisits } from "./utils/collection-visit-merge.js";
+import { extractCollectorInfo } from "./schedulers/data-processor.js";
 import axios from "axios";
 
 // Configuration
@@ -12,58 +14,6 @@ const CONFIG = {
     delayBetweenDevices: 500,
     delayBetweenDates: 1000,
     batchSize: 5 // Process dates in batches
-};
-
-// Function to extract collector information from description
-const extractCollectorInfo = (descr) => {
-    if (!descr) return { id: null, nik: null };
-    
-    // Try to decode the description (it might be encoded)
-    let decodedDescr = descr;
-    try {
-        decodedDescr = decodeURIComponent(descr);
-    } catch (e) {
-        decodedDescr = descr;
-    }
-    
-    // Handle specific encoding issues
-    if (decodedDescr === 'Р†РіРѕСЂ' || decodedDescr.includes('Р†РіРѕСЂ')) {
-        return {
-            id: 'Kirk',
-            nik: 'Kirk'
-        };
-    }
-    
-    // Handle Р"РјРёС‚СЂРѕ encoding issue
-    if (decodedDescr === 'Р"РјРёС‚СЂРѕ' || decodedDescr.includes('Р"РјРёС‚СЂРѕ')) {
-        return {
-            id: 'Anna',
-            nik: 'Anna'
-        };
-    }
-    
-    // Handle Ігор - leave as is (proper Ukrainian text)
-    if (decodedDescr === 'Ігор' || decodedDescr.includes('Ігор')) {
-        return {
-            id: 'Ігор',
-            nik: 'Ігор'
-        };
-    }
-    
-    // Extract collector info - format seems to be "Name - "
-    const match = decodedDescr.match(/^(.+?)\s*-\s*$/);
-    if (match) {
-        const collectorName = match[1].trim();
-        return {
-            id: null,
-            nik: collectorName
-        };
-    }
-    
-    return {
-        id: null,
-        nik: decodedDescr.trim() || null
-    };
 };
 
 // Function to fetch device collection data with retry
@@ -103,74 +53,12 @@ const fetchDeviceCollectionWithRetry = async (deviceId, targetDate, retryCount =
 // Function to save collection data to database
 const saveCollectionData = async (collectionData, deviceInfo, targetDate, collectionRepo) => {
     try {
-        if (!collectionData.data || collectionData.data.length === 0) {
-            return 0;
-        }
-
-        let savedCount = 0;
-        
-        for (const entry of collectionData.data) {
-            const sumBanknotes = parseFloat(entry.banknotes) || 0;
-            const sumCoins = parseFloat(entry.coins) || 0;
-            const totalSum = sumBanknotes + sumCoins;
-            
-            // Skip zero-sum entries
-            if (totalSum === 0) {
-                continue;
-            }
-            
-            const collectorInfo = extractCollectorInfo(entry.descr);
-            
-            // Parse date and convert to Kyiv time
-            const collectionDate = new Date(entry.date);
-            const kyivHour = collectionDate.getHours();
-            const utcHour = kyivHour - 3;
-            
-            const kyivLocalDate = new Date(Date.UTC(
-                collectionDate.getFullYear(),
-                collectionDate.getMonth(),
-                collectionDate.getDate(),
-                utcHour,
-                collectionDate.getMinutes(),
-                collectionDate.getSeconds()
-            ));
-            
-            try {
-                // Check for existing entry
-                const existingEntry = await collectionRepo.findOne({
-                    date: kyivLocalDate.toISOString().split('T')[0],
-                    device_id: deviceInfo.id.toString(),
-                    sum_banknotes: sumBanknotes,
-                    sum_coins: sumCoins
-                });
-                
-                if (existingEntry) {
-                    continue; // Skip if already exists
-                }
-                
-                // Prepare data for saving
-                const dataToSave = {
-                    device_id: deviceInfo.id.toString(),
-                    date: kyivLocalDate.toISOString().split('T')[0],
-                    banknotes: sumBanknotes,
-                    coins: sumCoins,
-                    machine: deviceInfo.name || `Device ${deviceInfo.id}`,
-                    collector_id: collectorInfo.id,
-                    collector_nik: collectorInfo.nik,
-                    description: entry.descr || null
-                };
-                
-                await collectionRepo.saveCollectionData(dataToSave);
-                
-                savedCount++;
-                
-            } catch (dbError) {
-                logger.error(`Database error for device ${deviceInfo.id} on ${targetDate}: ${dbError.message}`);
-            }
-        }
-        
-        return savedCount;
-        
+        return await saveMergedCollectionVisits({
+            collectionData,
+            device: deviceInfo,
+            collectionRepo,
+            extractCollector: extractCollectorInfo,
+        });
     } catch (error) {
         logger.error(`Error processing data for device ${deviceInfo.id} on ${targetDate}: ${error.message}`);
         return 0;
@@ -180,11 +68,7 @@ const saveCollectionData = async (collectionData, deviceInfo, targetDate, collec
 // Function to check if date has collection data
 const checkDateHasData = async (targetDate, collectionRepo) => {
     try {
-        const count = await collectionRepo.count({
-            date: targetDate
-        });
-        
-        return count > 0;
+        return await collectionRepo.hasCollectionOnKyivDate(targetDate);
     } catch (error) {
         logger.error(`Error checking data for ${targetDate}: ${error.message}`);
         return false;

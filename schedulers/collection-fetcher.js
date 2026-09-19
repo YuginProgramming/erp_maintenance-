@@ -1,8 +1,9 @@
 import { connectionManager, databaseService } from "../database/index.js";
 import { CollectionRepository } from "../database/repositories/index.js";
 import { logger } from "../logger/index.js";
+import { saveMergedCollectionVisits } from "../utils/collection-visit-merge.js";
 import { fetchAllDevices, fetchDeviceCollection } from "./api-client.js";
-import { saveCollectionData } from "./data-processor.js";
+import { extractCollectorInfo } from "./data-processor.js";
 
 // Function to get yesterday's date in YYYY-MM-DD format
 export const getYesterdayDate = () => {
@@ -13,38 +14,13 @@ export const getYesterdayDate = () => {
 
 // Function to save collection data using the new repository
 const saveCollectionDataWithRepository = async (collectionData, device, collectionRepo) => {
-    let savedCount = 0;
-    
     try {
-        if (collectionData.data && Array.isArray(collectionData.data)) {
-            for (const entry of collectionData.data) {
-                // Check if data already exists
-                const exists = await collectionRepo.checkDataExists(device.id, entry.date);
-                if (exists) {
-                    logger.debug(`Collection data already exists for device ${device.id} on ${entry.date}, skipping`);
-                    continue;
-                }
-                
-                // Prepare data for saving
-                const dataToSave = {
-                    device_id: device.id,
-                    date: entry.date,
-                    banknotes: entry.banknotes || 0,
-                    coins: entry.coins || 0,
-                    collector_id: entry.collector_id || null,
-                    collector_nik: entry.collector_nik || null,
-                    description: entry.description || null
-                };
-                
-                // Save using repository
-                await collectionRepo.saveCollectionData(dataToSave);
-                savedCount++;
-                
-                logger.debug(`Saved collection entry for device ${device.id}: ${entry.banknotes} грн banknotes, ${entry.coins} грн coins`);
-            }
-        }
-        
-        return savedCount;
+        return await saveMergedCollectionVisits({
+            collectionData,
+            device,
+            collectionRepo,
+            extractCollector: extractCollectorInfo,
+        });
     } catch (error) {
         logger.error(`Error saving collection data for device ${device.id}:`, error);
         throw error;

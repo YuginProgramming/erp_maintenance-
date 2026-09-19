@@ -1,7 +1,7 @@
 import { connectionManager } from "../database/connection-manager.js";
 import { CollectionRepository } from "../database/repositories/collection-repository.js";
 import { logger } from "../logger/index.js";
-import { cleanNumericString, sanitizeCollectionEntry, logSanitizationIssue } from "../utils/data-sanitizer.js";
+import { saveMergedCollectionVisits } from "../utils/collection-visit-merge.js";
 import axios from "axios";
 import fs from 'fs';
 import path from 'path';
@@ -207,85 +207,13 @@ class RobustCollectionFetcher {
 
     async saveCollectionData(collectionData, deviceInfo) {
         try {
-            if (!collectionData.data || collectionData.data.length === 0) {
-                return 0;
-            }
-
-            let savedCount = 0;
-            
-            for (const entry of collectionData.data) {
-                // Sanitize the entry data to handle malformed numeric values
-                const sanitizedEntry = sanitizeCollectionEntry(entry);
-                
-                // Log any sanitization issues for monitoring
-                if (entry.banknotes !== sanitizedEntry.banknotes.toString()) {
-                    logSanitizationIssue(entry.banknotes, sanitizedEntry.banknotes, `Device ${deviceInfo.id} banknotes`);
-                }
-                if (entry.coins !== sanitizedEntry.coins.toString()) {
-                    logSanitizationIssue(entry.coins, sanitizedEntry.coins, `Device ${deviceInfo.id} coins`);
-                }
-                
-                const sumBanknotes = sanitizedEntry.banknotes;
-                const sumCoins = sanitizedEntry.coins;
-                const totalSum = sumBanknotes + sumCoins;
-                
-                // Skip zero-sum entries
-                if (totalSum === 0) {
-                    continue;
-                }
-                
-                const collectorInfo = this.extractCollectorInfo(entry.descr);
-                
-                // Parse date and convert to Kyiv time
-                const collectionDate = new Date(entry.date);
-                const kyivHour = collectionDate.getHours();
-                const utcHour = kyivHour - 3;
-                
-                const kyivLocalDate = new Date(Date.UTC(
-                    collectionDate.getFullYear(),
-                    collectionDate.getMonth(),
-                    collectionDate.getDate(),
-                    utcHour,
-                    collectionDate.getMinutes(),
-                    collectionDate.getSeconds()
-                ));
-                
-                try {
-                    // Check for existing entry
-                    const existingEntry = await Collection.findOne({
-                        where: {
-                            date: kyivLocalDate,
-                            device_id: deviceInfo.id.toString(),
-                            sum_banknotes: sumBanknotes,
-                            sum_coins: sumCoins
-                        }
-                    });
-                    
-                    if (existingEntry) {
-                        continue; // Skip if already exists
-                    }
-                    
-                    await Collection.create({
-                        date: kyivLocalDate,
-                        sum_banknotes: sumBanknotes,
-                        sum_coins: sumCoins,
-                        total_sum: totalSum,
-                        note: entry.descr || null,
-                        machine: deviceInfo.name || `Device ${deviceInfo.id}`,
-                        collector_id: collectorInfo.id,
-                        collector_nik: collectorInfo.nik,
-                        device_id: deviceInfo.id.toString()
-                    });
-                    
-                    savedCount++;
-                    
-                } catch (dbError) {
-                    console.log(`   ❌ Database error for device ${deviceInfo.id}: ${dbError.message}`);
-                }
-            }
-            
-            return savedCount;
-            
+            const collectionRepo = new CollectionRepository();
+            return await saveMergedCollectionVisits({
+                collectionData,
+                device: deviceInfo,
+                collectionRepo,
+                extractCollector: (descr) => this.extractCollectorInfo(descr),
+            });
         } catch (error) {
             console.log(`   ❌ Error processing data for device ${deviceInfo.id}: ${error.message}`);
             return 0;
